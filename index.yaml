@@ -10,17 +10,8 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
-- kind: TopArtsChart
+- kind: TopArt
   properties:
-  - name: height
-  - name: nick
-  - name: period
-  - name: width
-  - name: creation_date
-    direction: desc
-
-- kind: TopArtsChart
-  properties:
-  - name: nick
-  - name: creation_date
-    direction: desc
+  - name: auto_upd
+  - name: wait_for_upd
+  - name: last_upd_date

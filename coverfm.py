@@ -11,6 +11,8 @@ from google.appengine.api import images
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 from google.appengine.api import users
+from google.appengine.api.labs import taskqueue
+
 from google.appengine.ext import db
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
@@ -23,14 +25,17 @@ from libs import pylast
 
 # Application models
 
-class TopArtsChart(db.Model):
+class TopArt(db.Model):
     nick = db.StringProperty()
     owner = db.UserProperty()
     period = db.StringProperty()
     width = db.IntegerProperty()
     height = db.IntegerProperty()
     image = db.BlobProperty()
+    auto_upd = db.BooleanProperty(default=False)
+    wait_for_upd = db.BooleanProperty(default=False)
     creation_date = db.DateTimeProperty(auto_now_add=True)
+    last_upd_date = db.DateTimeProperty(auto_now=True)
 
     def get_url(self):
         return get_topart_url(self.nick, self.period,
@@ -79,32 +84,32 @@ class MainPage(BaseRequestHandler):
         w = int(self.request.get('width'))
         h = int(self.request.get('height'))
 
-        chart = get_chart(nick, period, w, h, False)
-        if chart is None:
-            size = config.ABOUT_ME_WIDTH // w
-            arts_urls, error = get_user_top_arts(nick, period, w*h)
+        topart = get_topart(nick, period, w, h, False)
+
+        if topart is None:
+            img, error = generate_topart(nick, period, w, h)
+
             if error:
                 return self.response.out.write(error)
 
-            img = generate_chart(arts_urls, w, h, size)
-            chart = TopArtsChart(nick=nick, period=period, width=w, height=h)
-            chart.owner = users.get_current_user()
-            chart.image = img
-            chart.put()
-            logging.info('new request for key=%s' % chart.key())
-            memcache.set(chart.get_url(), chart, config.EXPIRATION_TIME)
+            topart = TopArt(nick=nick, period=period, width=w, height=h)
+            topart.owner = users.get_current_user()
+            topart.image = img
+            topart.put()
+            logging.info('new request for key=%s' % topart.key())
+            memcache.set(topart.get_url(), topart, config.EXPIRATION_TIME)
     
-        self.generate('generated.html', {'topart': chart, 'nick': nick})
+        self.generate('generated.html', {'topart': topart, 'nick': nick})
 
 
 class UserTopArt(webapp.RequestHandler):
     def get(self, nick, period, width, height):
         width = int(width)
         height = int(height)
-        chart = get_chart(nick, period, width, height)
-        if chart:
+        topart = get_topart(nick, period, width, height)
+        if topart:
             self.response.headers['Content-Type'] = 'image/jpeg'
-            self.response.out.write(chart.image)
+            self.response.out.write(topart.image)
 
 
 class About(BaseRequestHandler):
@@ -112,22 +117,59 @@ class About(BaseRequestHandler):
         self.generate('about.html', auth_req=False)
 
 
-class TopArts(BaseRequestHandler):
+class ManageTopArts(BaseRequestHandler):
     def get(self):
-        toparts = TopArtsChart.all().order('-creation_date').fetch(100)
+        toparts = TopArt.all().order('-creation_date').fetch(100)
         topart_urls = [topart.get_url() for topart in toparts]
         self.generate('toparts.html', {'topart_urls': topart_urls})
 
 
-class TestPage(webapp.RequestHandler):
+class UpdateTopArts(webapp.RequestHandler):
     def get(self):
-        link = 'http://userserve-ak.last.fm/serve/126/25513267.jpg'
-        img = images.Image(urlfetch.Fetch(link).content)
-        img.resize(60, 60)
-        img = img.execute_transforms(output_encoding=images.JPEG)
-        self.response.headers['Content-Type'] = 'image/jpeg'
-        self.response.out.write(img)
+        toparts = TopArt.all()
+        toparts = toparts.filter('auto_upd =', True)
+        toparts = toparts.filter('wait_for_upd =', False)
+        toparts = toparts.order('last_upd_date')
 
+        #logging.info('UPDATE fill taskqueue (size=%d)' % toparts.count())
+        
+        for topart in toparts:
+            topart.wait_for_upd = True
+            topart.put()
+            params = {'nick': topart.nick, 'period': topart.period,
+                      'width': topart.width, 'height': topart.height}
+            taskqueue.Task(url='/update', params=params).add('update')
+
+        self.redirect('/')
+        
+
+    def post(self):
+        nick = self.request.get('nick')
+        period = self.request.get('period')
+        w = int(self.request.get('width'))
+        h = int(self.request.get('height'))
+
+        info = 'nick=%s, period=%s, w=%d, h=%d'  % (nick, period, w, h)
+
+        logging.info('UPDATING %s started' % info)
+
+        topart = get_topart(nick, period, w, h, False)
+        if topart:
+            img, error = generate_topart(topart.nick, topart.period, 
+                            topart.width, topart.height)
+
+            if error:
+                logging.error('UPDATE ERROR: %s\n Failed to update %s' 
+                                % (error, info))
+            else:
+                topart.image = img
+                topart.wait_for_upd = False
+                topart.put()
+                memcache.set(topart.get_url(), topart, config.EXPIRATION_TIME)
+                logging.info('UPDATED %s' % info)
+        else:
+            logging.error('UPDATE ERROR: failed to update %s' % info)
+                                                                                    
 
 class UserAvatar(webapp.RequestHandler):
     def get(self, nick):
@@ -145,27 +187,25 @@ def get_topart_url(nick, period, w, h):
     return '/'.join((nick, period, '%dx%d.jpg' % (w, h)))
 
 
-def get_chart(nick, period, w, h, use_cache=True):
+def get_topart(nick, period, w, h, use_cache=True):
     key = get_topart_url(nick, period, w, h)
-    chart = memcache.get(key) if use_cache else None
-    if chart is None:
-        charts = TopArtsChart.all()
-        charts.filter('nick =', nick)
-        charts.filter('period =', period)
-        charts.filter('width =', w)
-        charts.filter('height =', h)
-        charts = charts.fetch(1)
-        chart = charts[0] if charts else None
-        if chart is not None:
-            memcache.set(key, chart, config.EXPIRATION_TIME)
-            logging.info('new request for key=%s' % chart.key())
-    '''else:
-        logging.info('cache usage for key=%s' % chart.key())'''
+    topart = memcache.get(key) if use_cache else None
+    if topart is None:
+        toparts = TopArt.all()
+        toparts.filter('nick =', nick)
+        toparts.filter('period =', period)
+        toparts.filter('width =', w)
+        toparts.filter('height =', h)
+        toparts = toparts.fetch(1)
+        topart = toparts[0] if toparts else None
+        if topart is not None:
+            memcache.set(key, topart, config.EXPIRATION_TIME)
+            logging.info('new request for key=%s' % topart.key())
 
-    return chart
+    return topart
 
 
-def get_user_top_arts(nick, period=pylast.PERIOD_OVERALL, num=5,
+def get_arts_urls(nick, period=pylast.PERIOD_OVERALL, num=5,
                         size=config.COVER_SIZE):
     net = pylast.get_lastfm_network(api_key = config.LASTFM_API_KEY)
     arts_urls = []
@@ -176,28 +216,57 @@ def get_user_top_arts(nick, period=pylast.PERIOD_OVERALL, num=5,
         arts_urls = filter(lambda x: x is not None, arts_urls)[:num]
     except pylast.WSError, e:
         error = str(e)
+
     return arts_urls, error
 
 
-def generate_chart(img_urls, w, h, size):
-    MAX_COMPOSITE_NUM = 16
-    imgs = []
-    for i in xrange(h):
-        for j in xrange(w):
-            url = img_urls[i*w+j]
-            img = images.Image(urlfetch.Fetch(url).content)
-            img.resize(size, size)
-            img = img.execute_transforms(output_encoding=images.JPEG)
-            imgs.append((img, size*j, size*i, 1.0, images.TOP_LEFT))
-    res = None
-    if imgs:
-        res = imgs[0][0]
-        while len(imgs) > 1:
-            res = images.composite(imgs[:MAX_COMPOSITE_NUM], 
-                            w*size, h*size, output_encoding=images.JPEG)
-            imgs = [(res, 0, 0, 1.0, images.TOP_LEFT)] + imgs[MAX_COMPOSITE_NUM:]
+def generate_topart(nick, period, w, h):
+    size = config.ABOUT_ME_WIDTH // w
+    req_size = opt_size(size)
 
-    return images.composite(imgs, w*size, h*size, output_encoding=images.JPEG)
+    logging.info('GENERATE s=%(size)d, req_s=%(req_size)d' % locals())
+
+    error = ''
+    topart = None
+    arts_urls, error = get_arts_urls(nick, period, w*h, req_size)
+
+    if not error:
+        imgs = []
+        for i in xrange(h):
+            for j in xrange(w):
+                url = arts_urls[i*w+j]
+                img = urlfetch.Fetch(url).content
+                img = images.resize(img, size, size)
+                imgs.append((img, size*j, size*i, 1.0, images.TOP_LEFT))
+
+        if imgs:
+            width = w * size
+            height = h * size
+            topart = composite_arts(imgs, width, height)
+        else:
+            error = 'Failed to fetch images'
+    
+    return topart, error
+
+
+def opt_size(size):
+    sizes = [34, 64, 174, 300]
+
+    for i, s in enumerate(sizes):
+        if s >= size:
+            return i
+    
+    return 3
+
+
+def composite_arts(imgs, w, h):
+    MAX_COMPOSITE_NUM = 16
+    while len(imgs) > 1:
+        comp = images.composite(imgs[:MAX_COMPOSITE_NUM], 
+                        w, h, output_encoding=images.JPEG)
+        imgs = [(comp, 0, 0, 1.0, images.TOP_LEFT)] + imgs[MAX_COMPOSITE_NUM:]
+
+    return imgs[0][0]
 
 
 def get_user_avatar(nick):
@@ -232,10 +301,12 @@ def get_user_info():
 # Application instance
 
 application = webapp.WSGIApplication([('/', MainPage), 
-                                      ('/toparts', TopArts),
+                                      ('/toparts', ManageTopArts),
+                                      ('/update', UpdateTopArts),
                                       ('/about', About),
-                                      ('/test', TestPage),
+
                                       ('/avatar/(.*)', UserAvatar),
+                                      
                                       ('/(.*)/(.*)/(\d)x(\d).jpg', UserTopArt)],
                                      debug=config.DEBUG)
 
