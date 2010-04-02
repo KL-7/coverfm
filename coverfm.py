@@ -96,7 +96,7 @@ class MainPage(BaseRequestHandler):
             topart.owner = users.get_current_user()
             topart.image = img
             topart.put()
-            logging.info('new request for key=%s' % topart.key())
+            #logging.info('new request for key=%s' % topart.key())
             memcache.set(topart.get_url(), topart, config.EXPIRATION_TIME)
     
         self.generate('generated.html', {'topart': topart, 'nick': nick})
@@ -151,7 +151,7 @@ class UpdateTopArts(webapp.RequestHandler):
 
         info = 'nick=%s, period=%s, w=%d, h=%d'  % (nick, period, w, h)
 
-        logging.info('UPDATING %s started' % info)
+        #logging.info('UPDATING %s started' % info)
 
         topart = get_topart(nick, period, w, h, False)
         if topart:
@@ -200,7 +200,7 @@ def get_topart(nick, period, w, h, use_cache=True):
         topart = toparts[0] if toparts else None
         if topart is not None:
             memcache.set(key, topart, config.EXPIRATION_TIME)
-            logging.info('new request for key=%s' % topart.key())
+            #logging.info('new request for key=%s' % topart.key())
 
     return topart
 
@@ -224,7 +224,7 @@ def generate_topart(nick, period, w, h):
     size = config.ABOUT_ME_WIDTH // w
     req_size = opt_size(size)
 
-    logging.info('GENERATE s=%(size)d, req_s=%(req_size)d' % locals())
+    #logging.info('GENERATE s=%(size)d, req_s=%(req_size)d' % locals())
 
     error = ''
     topart = None
