@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<form action="/" enctype="multipart/form-data" method="post">
+    <p>
+        <label for="nick">Username</label>
+        <input id="nick" name="nick" value="KL-7" type="text">
+    </p>
+    <p>
+        <label for="width">Width</label>
+        <select id="width" name="width">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3" selected="selected">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+        </select>
+    </p>
+    <p>
+        <label for="height">Height</label>
+        <select id="height" name="height">
+            <option value="1">1 (for last.fm-forums)</option>
+            <option value="2">2</option>
+            <option value="3" selected="selected">3</option>
+            <option value="4">4</option>
+        </select>
+    </p>
+    <p>
+        <label for="period">Type</label>
+        <select id="period" name="period">
+            <option value="overall">Overall</option>
+            <option value="12month">12 Months</option>
+            <option value="6month">6 Months</option>
+            <option value="3month">3 Months</option>
+            <option value="7day" selected="selected">Weekly</option>
+        </select>
+    </p>
+    <p>
+        <input name="generate" value="Generate!" type="submit">
+    </p>
+</form>
+{% endblock %}

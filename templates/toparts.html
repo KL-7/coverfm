@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+    {% if topart_urls %}
+        <ol>
+            {% for url in topart_urls %}
+                <li><a href="{{ url }}">click</a></li>
+            {% endfor %}
+        </ol>
+    {% endif %}
+{% endblock %}
