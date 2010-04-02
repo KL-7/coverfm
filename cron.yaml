@@ -1,0 +1,5 @@
+cron:
+- description: daily toparts update
+  url: /update
+  schedule: every 12 hours
+  timezone: Europe/Minsk
