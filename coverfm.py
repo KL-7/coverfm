@@ -136,15 +136,16 @@ class UpdateTopArts(webapp.RequestHandler):
         for topart in toparts:
             topart.wait_for_upd = True
             topart.put()
-            params = {'nick': topart.nick, 'period': topart.period,
+            '''params = {'nick': topart.nick, 'period': topart.period,
                       'width': topart.width, 'height': topart.height}
-            taskqueue.Task(url='/update', params=params).add('update')
+            taskqueue.Task(url='/update', params=params).add('update')'''
+            taskqueue.Task(url='/update', params={'id': topart.key().id()}).add('update')
 
         self.redirect('/')
         
 
     def post(self):
-        nick = self.request.get('nick')
+        '''nick = self.request.get('nick')
         period = self.request.get('period')
         w = int(self.request.get('width'))
         h = int(self.request.get('height'))
@@ -153,8 +154,11 @@ class UpdateTopArts(webapp.RequestHandler):
 
         #logging.info('UPDATING %s started' % info)
 
-        topart = get_topart(nick, period, w, h, False)
+        topart = get_topart(nick, period, w, h, False)'''
+        id = int(self.request.get('id'))
+        topart = TopArt.get_by_id(id)
         if topart:
+            logging.info('updating %s\'s topart with id=%s' % (topart.nick, id))
             img, error = generate_topart(topart.nick, topart.period, 
                             topart.width, topart.height)
 
