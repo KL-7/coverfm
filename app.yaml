@@ -8,5 +8,8 @@ handlers:
   script: coverfm.py
   login: admin
 
+- url: /stats.*
+  script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
+
 - url: /.*
   script: coverfm.py

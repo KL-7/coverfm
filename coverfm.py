@@ -149,7 +149,7 @@ class UpdateTopArts(webapp.RequestHandler):
                         topart.period, topart.width, topart.height)
 
         if topart:
-            logging.info('UPDATE updating %s\'s topart with id=%s' % (topart.nick, id))
+            #logging.info('UPDATE updating %s\'s topart with id=%s' % (topart.nick, id))
             img, error = generate_topart(topart.nick, topart.period, 
                             topart.width, topart.height)
 
@@ -173,7 +173,8 @@ class UserAvatar(webapp.RequestHandler):
             self.response.out.write(error)
         else:
             img = urlfetch.Fetch(url).content
-            img = images.resize(img, 40, 40, images.JPEG)
+            #img = images.resize(img, 40, 40, images.JPEG)
+            img = images.resize(img, 100, 100)
             self.response.headers['Content-Type'] = 'image/jpeg'
             self.response.out.write(img)
   
@@ -208,8 +209,8 @@ def get_arts_urls(nick, period=pylast.PERIOD_OVERALL, num=5,
     arts_urls = []
     error = ''
     try:
-        arts_urls = net.get_user(nick).get_top_albums(period)
-        arts_urls = [item['item'].get_cover_image(size) for item in arts_urls]
+        arts_urls = net.get_user(nick).get_top_albums_with_arts(period)
+        arts_urls = [ta['images'][size] for ta in arts_urls]
         arts_urls = filter(lambda x: x is not None, arts_urls)[:num]
     except pylast.WSError, e:
         error = str(e)
@@ -245,7 +246,8 @@ def generate_topart(nick, period, w, h):
 
 
 def opt_size(size):
-    sizes = [34, 64, 174, 300]
+    sizes = [34, 64, 126, 300]
+    #sizes = [34, 64, 174, 300]
 
     for i, s in enumerate(sizes):
         if s >= size:

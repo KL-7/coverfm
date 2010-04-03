@@ -930,6 +930,11 @@ def _namedtuple(name, children):
         return fancydict
 
 TopItem = _namedtuple("TopItem", ["item", "weight"])
+
+# Added by KL-7
+TopItemWithArt = _namedtuple("TopItemWithArt", ["item", "weight", "images"])
+# End of added by KL-7
+
 SimilarItem = _namedtuple("SimilarItem", ["item", "match"])
 LibraryItem = _namedtuple("LibraryItem", ["item", "playcount", "tagcount"])
 PlayedTrack = _namedtuple("PlayedTrack", ["track", "playback_date", "timestamp"])
@@ -1424,7 +1429,7 @@ class Artist(_BaseObject, _Taggable):
             seq.append(TopItem(Album(artist, name, self.network), playcount))
         
         return seq
-        
+
     def get_top_tracks(self):
         """Returns a list of the most played Tracks by this artist."""
         
@@ -2917,6 +2922,34 @@ class User(_BaseObject):
             seq.append(TopItem(Album(artist, name, self.network), playcount))
         
         return seq
+
+    # Added by KL-7
+    def get_top_albums_with_arts(self, period = PERIOD_OVERALL):
+        """Returns the top albums (with arts) played by a user. 
+        * period: The period of time. Possible values:
+          o PERIOD_OVERALL
+          o PERIOD_7DAYS
+          o PERIOD_3MONTHS
+          o PERIOD_6MONTHS
+          o PERIOD_12MONTHS 
+        """
+        
+        params = self._get_params()
+        params['period'] = period
+        
+        doc = self._request('user.getTopAlbums', True, params)
+        
+        seq = []
+        for album in doc.getElementsByTagName('album'):
+            name = _extract(album, 'name')
+            artist = _extract(album, 'name', 1)
+            playcount = _extract(album, "playcount")
+            images = _extract_all(album, "image")
+            
+            seq.append(TopItemWithArt(Album(artist, name, self.network), playcount, images))
+        
+        return seq
+    # End of added by KL-7
     
     def get_top_artists(self, period = PERIOD_OVERALL):
         """Returns the top artists played by a user. 
