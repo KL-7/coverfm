@@ -136,34 +136,25 @@ class UpdateTopArts(webapp.RequestHandler):
         for topart in toparts:
             topart.wait_for_upd = True
             topart.put()
-            '''params = {'nick': topart.nick, 'period': topart.period,
-                      'width': topart.width, 'height': topart.height}
-            taskqueue.Task(url='/update', params=params).add('update')'''
             taskqueue.Task(url='/update', params={'id': topart.key().id()}).add('update')
 
         self.redirect('/')
         
 
     def post(self):
-        '''nick = self.request.get('nick')
-        period = self.request.get('period')
-        w = int(self.request.get('width'))
-        h = int(self.request.get('height'))
-
-        info = 'nick=%s, period=%s, w=%d, h=%d'  % (nick, period, w, h)
-
-        #logging.info('UPDATING %s started' % info)
-
-        topart = get_topart(nick, period, w, h, False)'''
         id = int(self.request.get('id'))
         topart = TopArt.get_by_id(id)
+
+        info = 'nick=%s, period=%s, w=%d, h=%d'  % (topart.nick, 
+                        topart.period, topart.width, topart.height)
+
         if topart:
-            logging.info('updating %s\'s topart with id=%s' % (topart.nick, id))
+            logging.info('UPDATE updating %s\'s topart with id=%s' % (topart.nick, id))
             img, error = generate_topart(topart.nick, topart.period, 
                             topart.width, topart.height)
 
             if error:
-                logging.error('UPDATE ERROR: %s\n Failed to update %s' 
+                logging.error('UPDATE ERROR: %s\n Failed to update %s  - generating error' 
                                 % (error, info))
             else:
                 topart.image = img
@@ -172,7 +163,7 @@ class UpdateTopArts(webapp.RequestHandler):
                 memcache.set(topart.get_url(), topart, config.EXPIRATION_TIME)
                 logging.info('UPDATED %s' % info)
         else:
-            logging.error('UPDATE ERROR: failed to update %s' % info)
+            logging.error('UPDATE ERROR: Failed to update %s - missing previous topart' % info)
                                                                                     
 
 class UserAvatar(webapp.RequestHandler):
@@ -181,8 +172,10 @@ class UserAvatar(webapp.RequestHandler):
         if error:
             self.response.out.write(error)
         else:
+            img = urlfetch.Fetch(url).content
+            img = images.resize(img, 40, 40, images.JPEG)
             self.response.headers['Content-Type'] = 'image/jpeg'
-            self.response.out.write(urlfetch.Fetch(url).content)
+            self.response.out.write(img)
   
 
 # Useful functions
@@ -228,8 +221,6 @@ def generate_topart(nick, period, w, h):
     size = config.ABOUT_ME_WIDTH // w
     req_size = opt_size(size)
 
-    #logging.info('GENERATE s=%(size)d, req_s=%(req_size)d' % locals())
-
     error = ''
     topart = None
     arts_urls, error = get_arts_urls(nick, period, w*h, req_size)
@@ -240,7 +231,7 @@ def generate_topart(nick, period, w, h):
             for j in xrange(w):
                 url = arts_urls[i*w+j]
                 img = urlfetch.Fetch(url).content
-                img = images.resize(img, size, size)
+                img = images.resize(img, size, size, images.JPEG)
                 imgs.append((img, size*j, size*i, 1.0, images.TOP_LEFT))
 
         if imgs:
