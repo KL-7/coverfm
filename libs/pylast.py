@@ -932,7 +932,7 @@ def _namedtuple(name, children):
 TopItem = _namedtuple("TopItem", ["item", "weight"])
 
 # Added by KL-7
-TopItemWithArt = _namedtuple("TopItemWithArt", ["item", "weight", "images"])
+TopItemWithArt = _namedtuple("TopItemWithArt", ["item", "weight", "image"])
 # End of added by KL-7
 
 SimilarItem = _namedtuple("SimilarItem", ["item", "match"])
@@ -2924,7 +2924,8 @@ class User(_BaseObject):
         return seq
 
     # Added by KL-7
-    def get_top_albums_with_arts(self, period = PERIOD_OVERALL):
+    def get_top_albums_with_arts(self, period = PERIOD_OVERALL,
+                    size = COVER_LARGE):
         """Returns the top albums (with arts) played by a user. 
         * period: The period of time. Possible values:
           o PERIOD_OVERALL
@@ -2944,9 +2945,9 @@ class User(_BaseObject):
             name = _extract(album, 'name')
             artist = _extract(album, 'name', 1)
             playcount = _extract(album, "playcount")
-            images = _extract_all(album, "image")
+            image = _extract_all(album, "image")[size]
             
-            seq.append(TopItemWithArt(Album(artist, name, self.network), playcount, images))
+            seq.append(TopItemWithArt(Album(artist, name, self.network), playcount, image))
         
         return seq
     # End of added by KL-7

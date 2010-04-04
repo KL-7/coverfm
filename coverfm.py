@@ -209,8 +209,8 @@ def get_arts_urls(nick, period=pylast.PERIOD_OVERALL, num=5,
     arts_urls = []
     error = ''
     try:
-        arts_urls = net.get_user(nick).get_top_albums_with_arts(period)
-        arts_urls = [ta['images'][size] for ta in arts_urls]
+        arts_urls = net.get_user(nick).get_top_albums_with_arts(period, size)
+        arts_urls = [ta['image'] for ta in arts_urls]
         arts_urls = filter(lambda x: x is not None, arts_urls)[:num]
     except pylast.WSError, e:
         error = str(e)
