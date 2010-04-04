@@ -126,17 +126,25 @@ class ManageTopArts(BaseRequestHandler):
 
 class UpdateTopArts(webapp.RequestHandler):
     def get(self):
-        toparts = TopArt.all()
-        toparts = toparts.filter('auto_upd =', True)
+        toparts = TopArt.all().filter('auto_upd =', True)
         toparts = toparts.filter('wait_for_upd =', False)
         toparts = toparts.order('last_upd_date')
 
         #logging.info('UPDATE fill taskqueue (size=%d)' % toparts.count())
         
+        storage = []
         for topart in toparts:
             topart.wait_for_upd = True
-            topart.put()
+            
             taskqueue.Task(url='/update', params={'id': topart.key().id()}).add('update')
+
+            storage.append(topart)
+            if len(storage) == config.BATCH_PUT_LIMIT:
+                db.put(storage)
+                storage = []
+
+        if storage:
+            db.put(storage)
 
         self.redirect('/')
         
