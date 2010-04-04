@@ -203,6 +203,10 @@ def get_topart(nick, period, w, h, use_cache=True):
     return topart
 
 
+def cover_filter(link):
+    return link is not None and 'default_album' not in link
+
+
 def get_arts_urls(nick, period=pylast.PERIOD_OVERALL, num=5,
                         size=config.COVER_SIZE):
     net = pylast.get_lastfm_network(api_key = config.LASTFM_API_KEY)
@@ -211,7 +215,7 @@ def get_arts_urls(nick, period=pylast.PERIOD_OVERALL, num=5,
     try:
         arts_urls = net.get_user(nick).get_top_albums_with_arts(period, size)
         arts_urls = [ta['image'] for ta in arts_urls]
-        arts_urls = filter(lambda x: x is not None, arts_urls)[:num]
+        arts_urls = filter(cover_filter, arts_urls)[:num]
     except pylast.WSError, e:
         error = str(e)
 
@@ -226,7 +230,15 @@ def generate_topart(nick, period, w, h):
     topart = None
     arts_urls, error = get_arts_urls(nick, period, w*h, req_size)
 
-    if not error:
+    if arts_urls and not error:
+        if len(arts_urls) < w*h:
+            if len(arts_urls) >= w:
+                h = len(arts_urls) // w
+                arts_urls = arts_urls[:w*h]
+            else:
+                h = 1
+                w = len(arts_urls)
+
         imgs = []
         for i in xrange(h):
             for j in xrange(w):
@@ -241,6 +253,8 @@ def generate_topart(nick, period, w, h):
             topart = composite_arts(imgs, width, height)
         else:
             error = 'Failed to fetch images'
+    else:
+        error = 'Topart generatin failed'            
     
     return topart, error
 
