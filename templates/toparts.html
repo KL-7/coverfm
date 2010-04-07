@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
+    <b><a href='/update'>Update all with auto-update</a></b>
+    <br/>
     {% if topart_urls %}
         <ol>
             {% for url in topart_urls %}
                 <li><a href="{{ url }}">click</a></li>
             {% endfor %}
         </ol>
+        <br/>
     {% endif %}
 {% endblock %}
