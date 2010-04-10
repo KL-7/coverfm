@@ -29,10 +29,10 @@ appstats_KEY_MODULUS = 1000
 # saved; MAX_DEPTH limits the nesting depth used when computing the
 # string representation of structured variables (e.g. lists of lists).
 
-appstats_MAX_STACK = 3
-appstats_MAX_LOCALS = 5
-appstats_MAX_REPR = 40
-appstats_MAX_DEPTH = 3
+appstats_MAX_STACK = 5
+appstats_MAX_LOCALS = 10
+appstats_MAX_REPR = 60
+appstats_MAX_DEPTH = 4
 
 # Timeout for memcache lock management, in seconds.
 
