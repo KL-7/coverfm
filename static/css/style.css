@@ -1,0 +1,172 @@
+body {
+	width: 750px;
+	padding: 0 0;
+	margin: 0 auto;
+    font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif;
+    background-color: #666666;
+    font-size:13px;
+}
+
+.container {
+    margin: 0 auto;
+    width: 700px;
+    padding: 2em 1.7em;
+    border: solid 2px #b7ddf2;
+    background: #ebf4fb;
+    -moz-border-radius: 0em 0em 1em 1em;
+}
+
+.round {
+    -moz-border-radius: 0em 0em 0em 1em;
+}
+
+a {
+    color: #2276bb;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/**/
+
+#header {
+    text-align:right;
+}
+
+.top-navigation {
+    background-color: #ebf4fb;
+    border: solid 2px #b7ddf2;
+    display:inline-block;
+    padding: 0em 1em;
+	margin-top: -2px;
+	margin-right: 1px;
+}
+
+.top-navigation * {
+    display:inline;
+}
+
+.top-navigation ul {
+    list-style:none outside none;
+}
+
+.top-navigation li {
+	border-left: solid 2px #b7ddf2;
+    position: relative;
+	padding-left: 6px;
+	padding-bottom: 3px;
+	padding-top: 3px;
+	margin-left: 3px;
+}
+
+.top-navigation .separator {
+	border-right: solid 2px #b7ddf2;
+	margin-right: 6px;
+	margin-left: 2px;
+	padding-bottom: 3px;
+	padding-top: 3px;
+}
+
+.top-navigation > li > a {
+    border:1px solid transparent;
+    display:inline-block;
+    font-size:1.05em;
+    padding:0.5em 0.15em;
+}
+
+p, h1, form, button{border:0; margin:0; padding:0;}
+.spacer{clear:both; height:1px;}
+
+.error h1 {
+	color: #dd0000;
+}
+
+#generated code {
+	background-color:#EEEEEE;
+	border:2px solid #CACACA;
+	display:block;
+	font-size:1.2em;
+	padding:3px;
+}
+
+#generated img {
+	border:2px solid #CACACA;
+	-moz-box-shadow: 5px 5px 17px #666666;
+}
+
+/* ----------- generating form ----------- */
+#genform {
+    width:400px;
+    padding: 15px;
+    margin: 0 auto;
+}
+
+/* ----------- stylized inputs ----------- */
+/*#stylized {
+    border:solid 2px #b7ddf2;
+    background:#ebf4fb;
+}*/
+
+.stylized h1 {
+    font-size:14px;
+    font-weight:bold;
+    margin-bottom:8px;
+}
+
+.stylized p {
+    font-size:11px;
+    color:#666666;
+    margin-bottom:20px;
+    border-bottom:solid 1px #b7ddf2;
+    padding-bottom:10px;
+}
+
+.stylized label {
+    display:block;
+    font-weight:bold;
+    text-align:right;
+    width:140px;
+    float:left;
+}
+
+.stylized .small {
+    color:#666666;
+    display:block;
+    font-size:11px;
+    font-weight:normal;
+    text-align:right;
+    width:140px;
+}
+
+.stylized input {
+    float:left;
+    font-size:12px;
+    padding:4px 2px;
+    border:solid 1px #aacfe4;
+    width:200px;
+    margin:2px 0 20px 10px;
+}
+
+.stylized select {
+    float:left;
+    font-size:12px;
+    padding:4px 2px;
+    border:solid 1px #aacfe4;
+    width:206px;
+    margin:2px 0 20px 10px;
+}
+
+.stylized button {
+    clear:both;
+    margin-left:150px;
+    width:125px;
+    height:31px;
+    background:#666666 url(/images/button.png) no-repeat;
+    text-align:center;
+    line-height:31px;
+    color:#FFFFFF;
+    font-size:11px;
+    font-weight:bold;
+}
