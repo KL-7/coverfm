@@ -90,7 +90,7 @@ class MainPage(BaseRequestHandler):
             img, error = generate_topart(nick, period, w, h)
 
             if error:
-                return self.response.out.write(error)
+                return self.generate('generated.html', {'error': error})
 
             topart = TopArt(nick=nick, period=period, width=w, height=h)
             topart.owner = users.get_current_user()
@@ -119,9 +119,9 @@ class About(BaseRequestHandler):
 
 class ManageTopArts(BaseRequestHandler):
     def get(self):
-        toparts = TopArt.all().order('-creation_date').fetch(100)
-        topart_urls = [topart.get_url() for topart in toparts]
-        self.generate('toparts.html', {'topart_urls': topart_urls})
+        toparts = TopArt.all().order('-last_upd_date').fetch(100)
+        toparts = [{'topart': topart, 'url': topart.get_url()} for topart in toparts]
+        self.generate('toparts.html', {'toparts': toparts})
 
 
 class UpdateTopArts(webapp.RequestHandler):
@@ -262,7 +262,7 @@ def generate_topart(nick, period, w, h):
         else:
             error = 'Failed to fetch images'
     else:
-        error = 'Topart generatin failed'            
+        error = 'Topart generating failed'            
     
     return topart, error
 
@@ -323,7 +323,6 @@ application = webapp.WSGIApplication([('/', MainPage),
                                       ('/toparts', ManageTopArts),
                                       ('/update', UpdateTopArts),
                                       ('/about', About),
-
                                       ('/avatar/(.*)', UserAvatar),
                                       
                                       ('/(.*)/(.*)/(\d)x(\d).jpg', UserTopArt)],

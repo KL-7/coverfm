@@ -1,16 +1,19 @@
 {% extends "base.html" %}
 {% block content %}
     {% if error %}
-        <p>{{ error }}<p>
+		<div class="error">
+			<h1>Error:</h1>
+			{{ error }}
+		</div>
     {% else %}
-        <div style="border: 2px solid #CACACA; overflow:auto; width: 80%">
+        <div id="generated">
+			<h2>Generated image:</h2>
+            <img src="{{ topart.nick }}/{{ topart.period }}/{{ topart.width }}x{{ topart.height }}.jpg"/>
+			<h2>Generated code:</h2>
             <code>
                 [quote][align=center][size=10][b]{{ nick }}'s Top Albums[/b][/size][/align][/quote]
-                [url={{ host }}][img]{{ host }}/{{ topart.nick }}/{{ topart.period }}/{{ topart.width }}x{{ topart.height }}.jpg[/img][/url]
+				[url={{ host }}][img]{{ host }}/{{ topart.nick }}/{{ topart.period }}/{{ topart.width }}x{{ topart.height }}.jpg[/img][/url]
             </code>
-        </div>
-        <div>
-            <img src="{{ topart.nick }}/{{ topart.period }}/{{ topart.width }}x{{ topart.height }}.jpg"/>
         </div>
     {% endif %}
 {% endblock %}

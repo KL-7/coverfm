@@ -2,10 +2,11 @@
 {% block content %}
     <b><a href='/update'>Update all with auto-update</a></b>
     <br/>
-    {% if topart_urls %}
+    {% if toparts %}
         <ol>
-            {% for url in topart_urls %}
-                <li><a href="{{ url }}">click</a></li>
+            {% for ta in toparts %}
+                <li><a href="{{ ta.url }}">{{ ta.topart.owner }}  ({{ta.topart.nick}}, 
+				{{ta.topart.period}}, {{ta.topart.width}}x{{ta.topart.height}})</a></li>
             {% endfor %}
         </ol>
         <br/>
