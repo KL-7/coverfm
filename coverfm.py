@@ -86,7 +86,7 @@ class MainPage(BaseRequestHandler):
 
         topart = get_topart(nick, period, w, h, False)
 
-        if topart is None:
+        if not topart:
             img, error = generate_topart(nick, period, w, h)
 
             if error:
@@ -97,6 +97,7 @@ class MainPage(BaseRequestHandler):
             topart.image = img
             topart.put()
             #logging.info('new request for key=%s' % topart.key())
+            #logging.info('memcache.set in MainPage')
             memcache.set(topart.get_url(), topart, config.EXPIRATION_TIME)
     
         self.generate('generated.html', {'topart': topart, 'nick': nick})
@@ -153,25 +154,28 @@ class UpdateTopArts(webapp.RequestHandler):
         id = int(self.request.get('id'))
         topart = TopArt.get_by_id(id)
 
-        info = 'nick=%s, period=%s, w=%d, h=%d'  % (topart.nick, 
+        if topart:
+            info = 'nick=%s, period=%s, size=%dx%d'  % (topart.nick, 
                         topart.period, topart.width, topart.height)
 
-        if topart:
-            #logging.info('UPDATE updating %s\'s topart with id=%s' % (topart.nick, id))
+            topart.wait_for_upd = False
+
             img, error = generate_topart(topart.nick, topart.period, 
                             topart.width, topart.height)
 
-            if error:
+            if not error:
+                topart.image = img
+                #logging.info('memcache.delete in UpdateTopArts')
+                memcache.delete(topart.get_url())
+                logging.info('UPDATED %s' % info)
+            else:
                 logging.error('UPDATE ERROR: %s\n Failed to update %s  - generating error' 
                                 % (error, info))
-            else:
-                topart.image = img
-                topart.wait_for_upd = False
-                topart.put()
-                memcache.set(topart.get_url(), topart, config.EXPIRATION_TIME)
-                logging.info('UPDATED %s' % info)
+
+            topart.put()
         else:
-            logging.error('UPDATE ERROR: Failed to update %s - missing previous topart' % info)
+            logging.error('UPDATE ERROR: Failed to update %d - missing previous topart' % id)
+ 
                                                                                     
 
 class UserAvatar(webapp.RequestHandler):
@@ -196,7 +200,7 @@ def get_topart_url(nick, period, w, h):
 def get_topart(nick, period, w, h, use_cache=True):
     key = get_topart_url(nick, period, w, h)
     topart = memcache.get(key) if use_cache else None
-    if topart is None:
+    if not topart:
         toparts = TopArt.all()
         toparts.filter('nick =', nick)
         toparts.filter('period =', period)
@@ -204,8 +208,9 @@ def get_topart(nick, period, w, h, use_cache=True):
         toparts.filter('height =', h)
         toparts = toparts.fetch(1)
         topart = toparts[0] if toparts else None
-        if topart is not None:
-            memcache.set(key, topart, config.EXPIRATION_TIME)
+        if topart:
+            #logging.info('memcache.set in get_topart')
+            memcache.set(topart.get_url(), topart, config.EXPIRATION_TIME)
             #logging.info('new request for key=%s' % topart.key())
 
     return topart

@@ -8,6 +8,7 @@ from libs import pylast
 # Application constants
 
 DEBUG = True
+APP_STATS = False
 
 # Last.fm api_key stored in lastfm_api_info
 LASTFM_API_KEY = lastfm_api_info.API_KEY

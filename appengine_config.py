@@ -55,5 +55,7 @@ appstats_RECORD_FRACTION = 0.2
 
 def webapp_add_wsgi_middleware(app):
     from google.appengine.ext.appstats import recording
-    app = recording.appstats_wsgi_middleware(app)
+    import config
+    if config.APP_STATS:
+        app = recording.appstats_wsgi_middleware(app)
     return app
