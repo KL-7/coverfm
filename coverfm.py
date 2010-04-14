@@ -37,10 +37,12 @@ class TopArt(db.Model):
     creation_date = db.DateTimeProperty(auto_now_add=True)
     last_upd_date = db.DateTimeProperty(auto_now=True)
 
-    def get_url(self):
+    def url(self):
         return get_topart_url(self.nick, self.period,
                         self.width, self.height)
 
+    def id(self):
+        return self.key().id()
 
 # Application request handlers
 
@@ -98,7 +100,7 @@ class MainPage(BaseRequestHandler):
             topart.put()
             #logging.info('new request for key=%s' % topart.key())
             #logging.info('memcache.set in MainPage')
-            memcache.set(topart.get_url(), topart, config.EXPIRATION_TIME)
+            memcache.set(topart.url(), topart, config.EXPIRATION_TIME)
     
         self.generate('generated.html', {'topart': topart, 'nick': nick})
 
@@ -121,11 +123,24 @@ class About(BaseRequestHandler):
 class ManageTopArts(BaseRequestHandler):
     def get(self):
         toparts = TopArt.all().order('-last_upd_date').fetch(100)
-        toparts = [{'topart': topart, 'url': topart.get_url()} for topart in toparts]
+        #toparts = [{'topart': topart, 'url': topart.url()} for topart in toparts]
         self.generate('toparts.html', {'toparts': toparts})
 
 
-class UpdateTopArts(webapp.RequestHandler):
+def set_wait_for_upd(toparts, state):
+    storage = []
+    for topart in toparts:
+        topart.wait_for_upd = state
+        storage.append(topart)
+        if len(storage) == config.BATCH_PUT_LIMIT:
+            db.put(storage)
+            storage = []
+
+    if storage:
+        db.put(storage)
+
+
+class UpdateAllTopArts(webapp.RequestHandler):
     def get(self):
         toparts = TopArt.all().filter('auto_upd =', True)
         toparts = toparts.filter('wait_for_upd =', False)
@@ -133,24 +148,25 @@ class UpdateTopArts(webapp.RequestHandler):
 
         #logging.info('UPDATE fill taskqueue (size=%d)' % toparts.count())
         
-        storage = []
         for topart in toparts:
-            topart.wait_for_upd = True
-            
-            taskqueue.Task(url='/update', params={'id': topart.key().id()}).add('update')
+            logging.info('UPDATE add id=%d' % topart.id())
+            taskqueue.Task(url='/update', method='GET', 
+                            params={'id': topart.id()}).add('update')
 
-            storage.append(topart)
-            if len(storage) == config.BATCH_PUT_LIMIT:
-                db.put(storage)
-                storage = []
+        set_wait_for_upd(toparts, True)
 
-        if storage:
-            db.put(storage)
+        self.redirect('/toparts')
 
-        self.redirect('/')
-        
 
-    def post(self):
+class UpdateReset(webapp.RequestHandler):
+    def get(self):
+        toparts = TopArt.all().filter('wait_for_upd =', True)
+        set_wait_for_upd(toparts, False)
+        self.redirect('/toparts')    
+
+
+class UpdateTopArt(webapp.RequestHandler):
+    def get(self):
         id = int(self.request.get('id'))
         topart = TopArt.get_by_id(id)
 
@@ -166,7 +182,7 @@ class UpdateTopArts(webapp.RequestHandler):
             if not error:
                 topart.image = img
                 #logging.info('memcache.delete in UpdateTopArts')
-                memcache.delete(topart.get_url())
+                memcache.delete(topart.url())
                 logging.info('UPDATED %s' % info)
             else:
                 logging.error('UPDATE ERROR: %s\n Failed to update %s  - generating error' 
@@ -175,7 +191,8 @@ class UpdateTopArts(webapp.RequestHandler):
             topart.put()
         else:
             logging.error('UPDATE ERROR: Failed to update %d - missing previous topart' % id)
- 
+
+        self.redirect('/')
                                                                                     
 
 class UserAvatar(webapp.RequestHandler):
@@ -194,7 +211,7 @@ class UserAvatar(webapp.RequestHandler):
 # Useful functions
 
 def get_topart_url(nick, period, w, h):
-    return '/'.join((nick, period, '%dx%d.jpg' % (w, h)))
+    return '/'.join(('topart', nick, period, '%dx%d.jpg' % (w, h)))
 
 
 def get_topart(nick, period, w, h, use_cache=True):
@@ -210,7 +227,7 @@ def get_topart(nick, period, w, h, use_cache=True):
         topart = toparts[0] if toparts else None
         if topart:
             #logging.info('memcache.set in get_topart')
-            memcache.set(topart.get_url(), topart, config.EXPIRATION_TIME)
+            memcache.set(topart.url(), topart, config.EXPIRATION_TIME)
             #logging.info('new request for key=%s' % topart.key())
 
     return topart
@@ -326,11 +343,12 @@ def get_user_info():
 
 application = webapp.WSGIApplication([('/', MainPage), 
                                       ('/toparts', ManageTopArts),
-                                      ('/update', UpdateTopArts),
+                                      ('/update', UpdateTopArt),
+                                      ('/update/all', UpdateAllTopArts),
+                                      ('/update/reset', UpdateReset),
                                       ('/about', About),
                                       ('/avatar/(.*)', UserAvatar),
-                                      
-                                      ('/(.*)/(.*)/(\d)x(\d).jpg', UserTopArt)],
+                                      ('/topart/(.*)/(.*)/(\d)x(\d).jpg', UserTopArt)],
                                      debug=config.DEBUG)
 
 # Application main function

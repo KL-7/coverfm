@@ -1,12 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
-    <b><a href='/update'>Update all with auto-update</a></b>
+    <b><a href='/update/all'>Update all with auto-update</a>
+    <br/>
+    <a href='/update/reset'>Reset all waiting for update</a></b>
     <br/>
     {% if toparts %}
         <ol>
             {% for ta in toparts %}
-                <li><a href="{{ ta.url }}">{{ ta.topart.owner }}  ({{ta.topart.nick}}, 
-				{{ta.topart.period}}, {{ta.topart.width}}x{{ta.topart.height}})</a></li>
+                <li><a href="{{ ta.url }}">{{ ta.owner }}  ({{ta.nick}}, 
+                {{ta.period}}, {{ta.width}}x{{ta.height}})</a>
+                <br/>
+                <a href="/update?id={{ ta.id }}">Update</a> <a href="/">Delete</a></li>
             {% endfor %}
         </ol>
         <br/>
