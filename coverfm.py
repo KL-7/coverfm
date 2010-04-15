@@ -149,9 +149,14 @@ class UpdateAllTopArts(webapp.RequestHandler):
         #logging.info('UPDATE fill taskqueue (size=%d)' % toparts.count())
         
         for topart in toparts:
-            logging.info('UPDATE add id=%d' % topart.id())
-            taskqueue.Task(url='/update', method='GET', 
-                            params={'id': topart.id()}).add('update')
+            try:
+                task_name = 'update%d' % topart.id()
+                task_params = {'id': topart.id()}
+                task = taskqueue.Task(url='/update', method='GET', 
+                                name=task_name, params=task_params)
+                task.add('update')
+            except taskqueue.TaskAlreadyExistsError:
+                pass
 
         set_wait_for_upd(toparts, True)
 
@@ -167,10 +172,13 @@ class UpdateReset(webapp.RequestHandler):
 
 class UpdateTopArt(webapp.RequestHandler):
     def get(self):
-        id = int(self.request.get('id'))
-        topart = TopArt.get_by_id(id)
+        try:
+            id = int(self.request.get('id'))
+            topart = TopArt.get_by_id(id)
+        except ValueError:
+            logging.error('id=%s is not a number' % self.request.get('id'))
 
-        if topart:
+        if topart and topart.wait_for_upd:
             info = 'nick=%s, period=%s, size=%dx%d'  % (topart.nick, 
                         topart.period, topart.width, topart.height)
 
@@ -189,10 +197,11 @@ class UpdateTopArt(webapp.RequestHandler):
                                 % (error, info))
 
             topart.put()
-        else:
+        elif not topart:
             logging.error('UPDATE ERROR: Failed to update %d - missing previous topart' % id)
 
-        self.redirect('/')
+        if not self.request.headers.get('X-AppEngine-TaskName', False):
+            self.redirect('/')
                                                                                     
 
 class UserAvatar(webapp.RequestHandler):
