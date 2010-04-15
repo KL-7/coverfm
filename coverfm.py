@@ -169,39 +169,46 @@ class ResetAllWaitingUpdates(webapp.RequestHandler):
 
 class UpdateTopArt(webapp.RequestHandler):
     def get(self):
+        queue_request = True if self.request.headers.get('X-AppEngine-TaskName') else False
+
         try:
             id = int(self.request.get('id'))
             topart = TopArt.get_by_id(id)
         except ValueError:
             logging.error('id=%s is not a number' % self.request.get('id'))
 
-        if topart and topart.wait_for_upd:
-            info = 'nick=%s, period=%s, size=%dx%d'  % (topart.nick, 
-                        topart.period, topart.width, topart.height)
-
-            topart.wait_for_upd = False
-
-            img, error = generate_topart(topart.nick, topart.period, 
-                            topart.width, topart.height)
-
-            if not error:
-                topart.image = img
-                topart.last_upd_date = datetime.datetime.now()
-                #logging.info('memcache.delete in UpdateTopArts')
-                memcache.delete(topart.url())
-                logging.info('UPDATED %s' % info)
-            else:
-                logging.error('UPDATE ERROR: %s\n Failed to update %s  - generating error' 
-                                % (error, info))
-
-            topart.put()
-        elif not topart:
+        if not topart:
             logging.error('UPDATE ERROR: Failed to update %d - missing previous topart' % id)
-        else:
-            logging.info('UPDATE: topart id=%d is not waiting for update' % id)
+            return
+        
+        info = 'nick=%s, period=%s, size=%dx%d'  % (topart.nick, 
+                    topart.period, topart.width, topart.height)
 
-        if not self.request.headers.get('X-AppEngine-TaskName', False):
-            self.redirect('/')
+        if queue_request:
+            if topart.wait_for_upd:
+                topart.wait_for_upd = False
+            else:
+                logging.info('UPDATE: topart id=%d is not waiting for update' % id)
+                return
+
+        img, error = generate_topart(topart.nick, topart.period, 
+                        topart.width, topart.height)
+
+        if not error:
+            topart.image = img
+            topart.last_upd_date = datetime.datetime.now()
+            topart.put()
+            #logging.info('memcache.delete in UpdateTopArts')
+            memcache.delete(topart.url())
+            logging.info('UPDATED %s' % info)
+        else:
+            if queue_request:
+                topart.put()
+            logging.error('UPDATE ERROR: %s\n Failed to update %s  - generating error' 
+                            % (error, info))
+
+        if not queue_request:
+            self.redirect(topart.url())
                                                                                     
 
 class UserAvatar(webapp.RequestHandler):
