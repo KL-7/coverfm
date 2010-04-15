@@ -193,6 +193,8 @@ class UpdateTopArt(webapp.RequestHandler):
             topart.put()
         elif not topart:
             logging.error('UPDATE ERROR: Failed to update %d - missing previous topart' % id)
+        else:
+            logging.error('UPDATE ERROR: topart id=%d is not waiting for update' % id)
 
         if not self.request.headers.get('X-AppEngine-TaskName', False):
             self.redirect('/')
