@@ -6,6 +6,7 @@ from __future__ import division
 
 import os
 import logging
+import datetime
 
 from google.appengine.api import images
 from google.appengine.api import memcache
@@ -35,7 +36,7 @@ class TopArt(db.Model):
     auto_upd = db.BooleanProperty(default=False)
     wait_for_upd = db.BooleanProperty(default=False)
     creation_date = db.DateTimeProperty(auto_now_add=True)
-    last_upd_date = db.DateTimeProperty(auto_now=True)
+    last_upd_date = db.DateTimeProperty(auto_now_add=True)
 
     def url(self):
         return get_topart_url(self.nick, self.period,
@@ -147,17 +148,19 @@ class UpdateAllTopArts(webapp.RequestHandler):
         toparts = toparts.order('last_upd_date')
 
         #logging.info('UPDATE fill taskqueue (size=%d)' % toparts.count())
-        
-        for topart in toparts:
-            taskqueue.Task(url='/update', method='GET', 
-                            params={'id': topart.id()}).add('update')
+
+        tasks = [taskqueue.Task(url='/update', method='GET', 
+                            params={'id': topart.id()}) for topart in toparts]
 
         set_wait_for_upd(toparts, True)
+
+        for task in tasks:
+            task.add('update')
 
         self.redirect('/toparts')
 
 
-class UpdateReset(webapp.RequestHandler):
+class ResetAllWaitingUpdates(webapp.RequestHandler):
     def get(self):
         toparts = TopArt.all().filter('wait_for_upd =', True)
         set_wait_for_upd(toparts, False)
@@ -183,6 +186,7 @@ class UpdateTopArt(webapp.RequestHandler):
 
             if not error:
                 topart.image = img
+                topart.last_upd_date = datetime.datetime.now()
                 #logging.info('memcache.delete in UpdateTopArts')
                 memcache.delete(topart.url())
                 logging.info('UPDATED %s' % info)
@@ -194,7 +198,7 @@ class UpdateTopArt(webapp.RequestHandler):
         elif not topart:
             logging.error('UPDATE ERROR: Failed to update %d - missing previous topart' % id)
         else:
-            logging.error('UPDATE ERROR: topart id=%d is not waiting for update' % id)
+            logging.info('UPDATE: topart id=%d is not waiting for update' % id)
 
         if not self.request.headers.get('X-AppEngine-TaskName', False):
             self.redirect('/')
@@ -350,7 +354,7 @@ application = webapp.WSGIApplication([('/', MainPage),
                                       ('/toparts', ManageTopArts),
                                       ('/update', UpdateTopArt),
                                       ('/update/all', UpdateAllTopArts),
-                                      ('/update/reset', UpdateReset),
+                                      ('/update/reset', ResetAllWaitingUpdates),
                                       ('/about', About),
                                       ('/avatar/(.*)', UserAvatar),
                                       ('/topart/(.*)/(.*)/(\d)x(\d).jpg', UserTopArt)],

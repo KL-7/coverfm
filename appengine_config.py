@@ -1,4 +1,6 @@
-﻿# DUMP_LEVEL: -1, 0, 1 or 2.  Controls how much debug output is
+﻿import config
+
+# DUMP_LEVEL: -1, 0, 1 or 2.  Controls how much debug output is
 # written to the logs by the internal dump() function during event
 # recording.  -1 dumps nothing; 0 dumps one line of information; 1
 # dumps more informat and 2 dumps the maximum amount of information.
@@ -50,12 +52,11 @@ appstats_stats_url = '/stats'
 # Fraction of requests to record.  Set this to a float between 0.0
 # and 1.0 to record that fraction of all requests.
 
-appstats_RECORD_FRACTION = 0.2
+appstats_RECORD_FRACTION = config.APP_STATS_RECORD_FRACTION
 
 
 def webapp_add_wsgi_middleware(app):
-    from google.appengine.ext.appstats import recording
-    import config
     if config.APP_STATS:
+        from google.appengine.ext.appstats import recording
         app = recording.appstats_wsgi_middleware(app)
     return app
