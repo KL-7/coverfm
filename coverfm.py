@@ -149,14 +149,8 @@ class UpdateAllTopArts(webapp.RequestHandler):
         #logging.info('UPDATE fill taskqueue (size=%d)' % toparts.count())
         
         for topart in toparts:
-            try:
-                task_name = 'update%d' % topart.id()
-                task_params = {'id': topart.id()}
-                task = taskqueue.Task(url='/update', method='GET', 
-                                name=task_name, params=task_params)
-                task.add('update')
-            except taskqueue.TaskAlreadyExistsError:
-                pass
+            taskqueue.Task(url='/update', method='GET', 
+                            params={'id': topart.id()}).add('update')
 
         set_wait_for_upd(toparts, True)
 
