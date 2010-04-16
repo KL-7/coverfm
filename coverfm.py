@@ -157,7 +157,8 @@ class UpdateAllTopArts(webapp.RequestHandler):
         for task in tasks:
             task.add('update')
 
-        self.redirect('/toparts')
+        if not self.request.headers.get('X-AppEngine-Cron')
+            self.redirect('/toparts')
 
 
 class ResetAllWaitingUpdates(webapp.RequestHandler):
@@ -170,12 +171,13 @@ class ResetAllWaitingUpdates(webapp.RequestHandler):
 class UpdateTopArt(webapp.RequestHandler):
     def get(self):
         queue_request = True if self.request.headers.get('X-AppEngine-TaskName') else False
+        topart = None
 
         try:
             id = int(self.request.get('id'))
             topart = TopArt.get_by_id(id)
         except ValueError:
-            logging.error('id=%s is not a number' % self.request.get('id'))
+            logging.info('id=%s is not a number' % self.request.get('id'))
 
         if not topart:
             logging.error('UPDATE ERROR: Failed to update %d - missing previous topart' % id)
