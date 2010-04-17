@@ -1,19 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
     {% if error %}
-		<div class="error">
-			<h1>Error:</h1>
-			{{ error }}
-		</div>
+        <div class="error">
+            <h1>Error:</h1>
+            {{ error }}
+        </div>
     {% else %}
         <div id="generated">
-			<h2>Generated image:</h2>
-            <img src="{{ topart.nick }}/{{ topart.period }}/{{ topart.width }}x{{ topart.height }}.jpg"/>
-			<h2>Generated code:</h2>
-            <code>
-                [quote][align=center][size=10][b]{{ nick }}'s Top Albums[/b][/size][/align][/quote]
-				[url={{ host }}][img]{{ host }}/{{ topart.nick }}/{{ topart.period }}/{{ topart.width }}x{{ topart.height }}.jpg[/img][/url]
-            </code>
+            <h2>Generated image:</h2>
+            <img src="{{ topart.url }}"/>
+            <h2>Generated code:</h2>
+            <code>[quote][align=center][size=10][b]{{ nick }}'s Top Albums[/b][/size][/align][/quote][url={{ host }}][img]{{ host }}/{{ topart.url }}[/img][/url]</code>
         </div>
     {% endif %}
 {% endblock %}
