@@ -53,7 +53,7 @@ class BaseRequestHandler(webapp.RequestHandler):
         host = self.request.host_url
         
         if auth_req and not self.is_authorized():
-            return self.redirect('/about')
+            return self.redirect('/faq')
                         
         values = {'user_name': user_name,
                   'user_is_admin': user_is_admin, 
@@ -116,9 +116,9 @@ class UserTopArt(webapp.RequestHandler):
             self.response.out.write(topart.image)
 
 
-class About(BaseRequestHandler):
+class FAQ(BaseRequestHandler):
     def get(self):
-        self.generate('about.html', auth_req=False)
+        self.generate('faq.html', auth_req=False)
 
 
 class ManageTopArts(BaseRequestHandler):
@@ -364,7 +364,7 @@ application = webapp.WSGIApplication([('/', MainPage),
                                       ('/update', UpdateTopArt),
                                       ('/update/all', UpdateAllTopArts),
                                       ('/update/reset', ResetAllWaitingUpdates),
-                                      ('/about', About),
+                                      ('/faq', FAQ),
                                       ('/avatar/(.*)', UserAvatar),
                                       ('/topart/(.*)/(.*)/(\d)x(\d).jpg', UserTopArt)],
                                      debug=config.DEBUG)
