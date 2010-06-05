@@ -1,4 +1,4 @@
-﻿import config
+import config
 
 # DUMP_LEVEL: -1, 0, 1 or 2.  Controls how much debug output is
 # written to the logs by the internal dump() function during event

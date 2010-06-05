@@ -1,5 +1,5 @@
 ﻿application: coverfm
-version: 4
+version: 5
 runtime: python
 api_version: 1
 
@@ -21,10 +21,6 @@ handlers:
   static_files: static/robots.txt
   upload: static/robots\.txt 
 
-- url: /update.*
-  script: coverfm.py
-  login: admin
-  
 - url: /stats.*
   script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
 

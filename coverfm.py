@@ -1,6 +1,5 @@
-﻿#!usr/bin/env python
-# -*- coding: utf-8 -*-
-# author: Kirill Lashuk
+#!usr/bin/env python
+# Author: Kirill Lashuk
 
 from __future__ import division
 
@@ -27,6 +26,10 @@ from libs import pylast
 # Application models
 
 class TopArt(db.Model):
+    '''Store user's topart information:
+        nick - user's nick on last.fm;
+        owner - user's UserProperty.
+    '''
     nick = db.StringProperty()
     owner = db.UserProperty()
     period = db.StringProperty()
@@ -39,24 +42,37 @@ class TopArt(db.Model):
     last_upd_date = db.DateTimeProperty(auto_now_add=True)
 
     def url(self):
+        '''Return url for this TopArt.'''
         return get_topart_url(self.nick, self.period,
                         self.width, self.height)
 
     def id(self):
+        '''Return TopArt ID.'''
         return self.key().id()
+
+
+def get_topart_url(nick, period, w, h):
+    '''Generate url for TopArt with specific parameters.'''
+    return '/'.join(('topart', nick, period, '%dx%d' % (w, h)))
+
 
 # Application request handlers
 
 class BaseRequestHandler(webapp.RequestHandler):
-    def generate(self, template_name, template_values=None, auth_req=True):
-        sign_url, sign_label, user_name, user_is_admin = get_user_info()
+    '''Base request handler class. Add basic information about the user to the request.'''
+    def generate(self, template_name, template_values=None):
+        '''Generate html from template. Add some parameters to the teplate_values list:
+            user_name       - current user name;
+            user_is_admin   - True if current user is admin of the application;
+            sign            - sign label text;
+            sign_url        - sign in/out url;
+            host            - application host name.'''
+        sign_url, sign_label, user_name, user_is_admin, user_is_auth = get_user_info()
         host = self.request.host_url
-        
-        if auth_req and not self.is_authorized():
-            return self.redirect('/faq')
-                        
+
         values = {'user_name': user_name,
-                  'user_is_admin': user_is_admin, 
+                  'user_is_admin': user_is_admin,
+                  'user_is_auth': user_is_auth,
                   'sign': sign_label,
                   'sign_url': sign_url,
                   'host': host}
@@ -69,31 +85,53 @@ class BaseRequestHandler(webapp.RequestHandler):
         html = template.render(path, values, debug=config.DEBUG)
         self.response.out.write(html)
 
-    def is_authorized(self):
-        return users.is_current_user_admin()
- 
+    @staticmethod
+    def authorized_only(method):
+        '''Decorate method in a such way that it will be processed only for authorized users.'''
+        def wrapped(self, *args, **kwargs):
+            if not is_user_authorized():
+                return self.redirect('/faq')
+            else:
+                method(self, *args, **kwargs)
+        return wrapped       
+        
+        
+    @staticmethod
+    def admin_only(method):
+        '''Decorate method in a such way that it will be processed only for admin users.'''
+        def wrapped(self, *args, **kwargs):
+            if not users.is_current_user_admin():
+                return self.redirect('/')
+            else:
+                method(self, *args, **kwargs)
+        return wrapped           
+        
 
 class MainPage(BaseRequestHandler):
+    '''MainPage request.'''
+    @BaseRequestHandler.authorized_only
     def get(self):
         self.generate('index.html')
 
+    @BaseRequestHandler.authorized_only
     def post(self):
         if 'generate' not in self.request.POST:
-            self.redirect('/')
-            return
+            return self.redirect('/')
 
         nick = self.request.get('nick')
         period = self.request.get('period')
         w = int(self.request.get('width'))
         h = int(self.request.get('height'))
 
+        # try to get topart from cache or db
         topart = get_topart(nick, period, w, h, False)
 
+        # generate requested topart if there is no one already
         if not topart:
             img, error = generate_topart(nick, period, w, h)
 
             if error:
-                return self.generate('generated.html', {'error': error})
+                return self.generate('index.html', {'error': error})
 
             topart = TopArt(nick=nick, period=period, width=w, height=h)
             topart.owner = users.get_current_user()
@@ -102,11 +140,16 @@ class MainPage(BaseRequestHandler):
             #logging.info('new request for key=%s' % topart.key())
             #logging.info('memcache.set in MainPage')
             memcache.set(topart.url(), topart, config.EXPIRATION_TIME)
-    
-        self.generate('generated.html', {'topart': topart, 'nick': nick})
+
+        self.redirect(topart.url())
 
 
-class UserTopArt(webapp.RequestHandler):
+class FAQ(BaseRequestHandler):
+    def get(self):
+        self.generate('faq.html')
+
+
+class UserTopArtImage(BaseRequestHandler):
     def get(self, nick, period, width, height):
         width = int(width)
         height = int(height)
@@ -116,40 +159,51 @@ class UserTopArt(webapp.RequestHandler):
             self.response.out.write(topart.image)
 
 
-class FAQ(BaseRequestHandler):
-    def get(self):
-        self.generate('faq.html', auth_req=False)
+class UserTopArtPage(BaseRequestHandler):
+    @BaseRequestHandler.authorized_only
+    def get(self, nick, period, width, height):
+        width = int(width)
+        height = int(height)
+        topart = get_topart(nick, period, width, height)
+        if topart:
+            self.generate('topart_page.html', {'topart': topart, 'nick': topart.nick})
+        else:
+            self.redirect('/toparts')
 
-
+            
 class ManageTopArts(BaseRequestHandler):
+    '''TopArts managing page request handler.'''
+    @BaseRequestHandler.authorized_only
     def get(self):
-        toparts = TopArt.all().order('-last_upd_date').fetch(100)
+        self_toparts = TopArt.all()
+        self_toparts = self_toparts.filter('owner =', users.get_current_user())
+        self_toparts = self_toparts.order('-last_upd_date')
+        self_toparts = self_toparts.fetch(10)
+                        
+        toparts = []
+        if users.is_current_user_admin():
+            toparts = TopArt.all()
+            toparts = toparts.order('-last_upd_date')
+            toparts = toparts.fetch(20)
+                        
         #toparts = [{'topart': topart, 'url': topart.url()} for topart in toparts]
-        self.generate('toparts.html', {'toparts': toparts})
+        self.generate('toparts.html', {'self_toparts': self_toparts, 'toparts': toparts})
 
 
-def set_wait_for_upd(toparts, state):
-    storage = []
-    for topart in toparts:
-        topart.wait_for_upd = state
-        storage.append(topart)
-        if len(storage) == config.BATCH_PUT_LIMIT:
-            db.put(storage)
-            storage = []
-
-    if storage:
-        db.put(storage)
-
-
-class UpdateAllTopArts(webapp.RequestHandler):
+class UpdateAllTopArts(BaseRequestHandler):
+    '''Add no more than config.UPDATE_LIMIT toparts to update task queue. Choose
+    toparts, that arn't waiting for update and haven't been updated for the longest time.'''
+    @BaseRequestHandler.admin_only
     def get(self):
-        toparts = TopArt.all().filter('auto_upd =', True)
+        toparts = TopArt.all()
+        toparts = toparts.filter('auto_upd =', True)
         toparts = toparts.filter('wait_for_upd =', False)
         toparts = toparts.order('last_upd_date')
+        toparts = toparts.fetch(1000)
 
         #logging.info('UPDATE fill taskqueue (size=%d)' % toparts.count())
 
-        tasks = [taskqueue.Task(url='/update', method='GET', 
+        tasks = [taskqueue.Task(url='/update', method='GET',
                             params={'id': topart.id()}) for topart in toparts]
 
         set_wait_for_upd(toparts, True)
@@ -161,29 +215,39 @@ class UpdateAllTopArts(webapp.RequestHandler):
             self.redirect('/toparts')
 
 
-class ResetAllWaitingUpdates(webapp.RequestHandler):
+class ResetAllWaitingUpdates(BaseRequestHandler):
+    '''Reset all toparts that are waiting for update, so they won't be skiped while updating.'''
+    @BaseRequestHandler.admin_only
     def get(self):
         toparts = TopArt.all().filter('wait_for_upd =', True)
         set_wait_for_upd(toparts, False)
-        self.redirect('/toparts')    
+        logging.info('reset')
+        self.redirect('/toparts')
+            
 
-
-class UpdateTopArt(webapp.RequestHandler):
+class UpdateTopArt(BaseRequestHandler):
+    @BaseRequestHandler.authorized_only
     def get(self):
-        queue_request = True if self.request.headers.get('X-AppEngine-TaskName') else False
+        if self.request.headers.get('X-AppEngine-TaskName'):
+            queue_request = True
+        else:
+            queue_request = False
 
         try:
             id = int(self.request.get('id'))
             topart = TopArt.get_by_id(id)
         except ValueError:
             logging.info('id=%s is not a number' % self.request.get('id'))
-            return
+            if not queue_request:
+                return self.redirect('/toparts')
 
         if not topart:
-            logging.error('UPDATE ERROR: Failed to update id=%d - missing previous topart' % id)
-            return
-        
-        info = 'nick=%s, period=%s, size=%dx%d'  % (topart.nick, 
+            logging.error('''UPDATE ERROR: Failed to update id=%d -
+                    missing previous topart''' % id)
+            if not queue_request:
+                return self.redirect('/toparts')
+
+        info = 'nick=%s, period=%s, size=%dx%d' % (topart.nick,
                     topart.period, topart.width, topart.height)
 
         if queue_request:
@@ -192,8 +256,10 @@ class UpdateTopArt(webapp.RequestHandler):
             else:
                 logging.info('UPDATE: topart id=%d is not waiting for update' % id)
                 return
-
-        img, error = generate_topart(topart.nick, topart.period, 
+        elif not (users.is_current_user_admin() or users.get_current_user() == topart.owner):
+            return self.redirect('/')
+                    
+        img, error = generate_topart(topart.nick, topart.period,
                         topart.width, topart.height)
 
         if not error:
@@ -206,30 +272,50 @@ class UpdateTopArt(webapp.RequestHandler):
         else:
             if queue_request:
                 topart.put()
-            logging.error('UPDATE ERROR: %s\n Failed to update %s  - generating error' 
-                            % (error, info))
+            logging.error('''UPDATE ERROR: %s\n Failed to update
+                            %s  - generating error''' % (error, info))
 
+        # if the request is not from taskqueue show updated topart
         if not queue_request:
             self.redirect(topart.url())
-                                                                                    
 
-class UserAvatar(webapp.RequestHandler):
-    def get(self, nick):
-        url, error = get_user_avatar(nick)
-        if error:
-            self.response.out.write(error)
-        else:
-            img = urlfetch.Fetch(url).content
-            #img = images.resize(img, 40, 40, images.JPEG)
-            img = images.resize(img, 100, 100)
-            self.response.headers['Content-Type'] = 'image/jpeg'
-            self.response.out.write(img)
-  
+            
+class DeleteTopArt(BaseRequestHandler):
+    @BaseRequestHandler.authorized_only
+    def get(self):
+        try:
+            id = int(self.request.get('id'))
+            topart = TopArt.get_by_id(id)
+        except ValueError:
+            logging.info('id=%s is not a number' % self.request.get('id'))
+            return self.redirect('/')
+
+        if not topart:
+            logging.error('''DELETE ERROR: Failed to delete id=%d -
+                    missing topart''' % id)
+            return self.redirect('/')
+
+        if not (users.is_current_user_admin() or users.get_current_user() == topart.owner):
+            return self.redirect('/')
+        
+        logging.info('Delete id=%d' % id)
+        topart.delete()
+        self.redirect('/toparts')
+            
 
 # Useful functions
 
-def get_topart_url(nick, period, w, h):
-    return '/'.join(('topart', nick, period, '%dx%d.jpg' % (w, h)))
+def set_wait_for_upd(toparts, state):
+    storage = []
+    for topart in toparts:
+        topart.wait_for_upd = state
+        storage.append(topart)
+        if len(storage) == config.BATCH_PUT_LIMIT:
+            db.put(storage)
+            storage = []
+
+    if storage:
+        db.put(storage)
 
 
 def get_topart(nick, period, w, h, use_cache=True):
@@ -252,12 +338,14 @@ def get_topart(nick, period, w, h, use_cache=True):
 
 
 def cover_filter(link):
-    return link is not None and 'default_album' not in link
+#    return link is not None and 'default_album' not in link
+#    if 'last' not in link: logging.info(link)
+    return link is not None and 'default_album' not in link and 'last' in link
 
 
 def get_arts_urls(nick, period=pylast.PERIOD_OVERALL, num=5,
                         size=config.COVER_SIZE):
-    net = pylast.get_lastfm_network(api_key = config.LASTFM_API_KEY)
+    net = pylast.get_lastfm_network(api_key=config.LASTFM_API_KEY)
     arts_urls = []
     error = ''
     try:
@@ -276,13 +364,13 @@ def generate_topart(nick, period, w, h):
 
     error = ''
     topart = None
-    arts_urls, error = get_arts_urls(nick, period, w*h, req_size)
+    arts_urls, error = get_arts_urls(nick, period, w * h, req_size)
 
     if arts_urls and not error:
-        if len(arts_urls) < w*h:
+        if len(arts_urls) < w * h:
             if len(arts_urls) >= w:
                 h = len(arts_urls) // w
-                arts_urls = arts_urls[:w*h]
+                arts_urls = arts_urls[:w * h]
             else:
                 h = 1
                 w = len(arts_urls)
@@ -290,10 +378,10 @@ def generate_topart(nick, period, w, h):
         imgs = []
         for i in xrange(h):
             for j in xrange(w):
-                url = arts_urls[i*w+j]
+                url = arts_urls[i * w + j]
                 img = urlfetch.Fetch(url).content
                 img = images.resize(img, size, size, images.JPEG)
-                imgs.append((img, size*j, size*i, 1.0, images.TOP_LEFT))
+                imgs.append((img, size * j, size * i, 1.0, images.TOP_LEFT))
 
         if imgs:
             width = w * size
@@ -302,72 +390,78 @@ def generate_topart(nick, period, w, h):
         else:
             error = 'Failed to fetch images'
     else:
-        error = 'Topart generating failed'            
-    
+        error = 'Topart generating failed'
+
     return topart, error
 
 
 def opt_size(size):
+    '''Return optimal pylast size constant based on required artwork size.
+    Sizes are:
+        COVER_SMALL = 0         - 34x34 px
+        COVER_MEDIUM = 1        - 64x64 px
+        COVER_LARGE = 2         - 126x126 px
+        COVER_EXTRA_LARGE = 3   - 300x300 px'''
+
     sizes = [34, 64, 126, 300]
     #sizes = [34, 64, 174, 300]
 
     for i, s in enumerate(sizes):
         if s >= size:
             return i
-    
+
     return 3
 
 
 def composite_arts(imgs, w, h):
     MAX_COMPOSITE_NUM = 16
     while len(imgs) > 1:
-        comp = images.composite(imgs[:MAX_COMPOSITE_NUM], 
+        comp = images.composite(imgs[:MAX_COMPOSITE_NUM],
                         w, h, output_encoding=images.JPEG)
         imgs = [(comp, 0, 0, 1.0, images.TOP_LEFT)] + imgs[MAX_COMPOSITE_NUM:]
 
     return imgs[0][0]
 
-
-def get_user_avatar(nick):
-    net = pylast.get_lastfm_network(api_key = config.LASTFM_API_KEY)
-    avatar_url = None
-    error = ''
-    try:
-        avatar_url = net.get_user(nick).get_image()
-    except pylast.WSError, e:
-        error = str(e)
-
-    return avatar_url, error
+    
+def is_user_authorized():
+    '''Return True if user is allowed to use the application.'''
+    #return True if users.get_current_user() else False
+    return users.is_current_user_admin()
 
 
 def get_user_info():
+    '''Gather user information and generate sign in/out url.'''
     user = users.get_current_user()
-        
+
     if user:
         sign_url = users.create_logout_url('/')
         sign_label = 'Sign out'
         user_name = users.get_current_user().email()
         is_admin = users.is_current_user_admin()
+        is_auth = is_user_authorized()
     else:
         sign_url = users.create_login_url('/')
         sign_label = 'Sign in'
         user_name = ''
         is_admin = False
+        is_auth = False
 
-    return sign_url, sign_label, user_name, is_admin
+    return sign_url, sign_label, user_name, is_admin, is_auth
 
 
 # Application instance
 
-application = webapp.WSGIApplication([('/', MainPage), 
-                                      ('/toparts', ManageTopArts),
-                                      ('/update', UpdateTopArt),
-                                      ('/update/all', UpdateAllTopArts),
-                                      ('/update/reset', ResetAllWaitingUpdates),
-                                      ('/faq', FAQ),
-                                      ('/avatar/(.*)', UserAvatar),
-                                      ('/topart/(.*)/(.*)/(\d)x(\d).jpg', UserTopArt)],
-                                     debug=config.DEBUG)
+application = webapp.WSGIApplication(
+                        [('/', MainPage),
+                        ('/faq', FAQ),
+                        ('/update', UpdateTopArt),
+                        ('/update/all', UpdateAllTopArts),
+                        ('/reset/all', ResetAllWaitingUpdates),
+                        ('/delete', DeleteTopArt),
+                        ('/toparts', ManageTopArts),
+                        ('/topart/(.*)/(.*)/(\d+)x(\d+).jpg', UserTopArtImage),
+                        ('/topart/(.*)/(.*)/(\d+)x(\d+)', UserTopArtPage)],
+                        debug=config.DEBUG)
 
 # Application main function
 
@@ -375,5 +469,5 @@ def main():
     run_wsgi_app(application)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -3,24 +3,27 @@
 <head>
     <title> Cover.fm - top arts collector</title>
     <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
-    <link rel="stylesheet" type="text/css" href="css/style.css" media="screen"/>
+    <link rel="stylesheet" type="text/css" href="/css/style.css" media="screen"/>
     <link rel="shortcut icon" href="/favicon.ico" />
+
+    <link rel="stylesheet" href="/css/lightbox.css" type="text/css" media="screen" />
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/prototype/1.6.1.0/prototype.js"></script>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/scriptaculous/1.8.3/scriptaculous.js?load=effects,builder"></script>
+    <script type="text/javascript" src="/js/lightbox.js"></script>
 </head>
 <body>
     <div id="header">    
         <ul class="top-navigation">
             <li style="border: none;">
-                <a href="/">Home</a>
+                {% if user_is_auth %}<a href="/">{% endif %}
+                Home
+                {% if user_is_auth %}</a>{% endif %}
             </li>
             {% if user_name %}
                 <li>
-                    {% if user_is_admin %} 
-                        <a href="{{ host }}/toparts">
-                    {% endif %}
+                    {% if user_is_auth %}<a href="{{ host }}/toparts">{% endif %}
                     {{ user_name }}
-                    {% if user_is_admin %} 
-                        </a>
-                    {% endif %}
+                    {% if user_is_auth %}</a>{% endif %}
                 </li>
             {% endif %}
             <li>
@@ -31,8 +34,15 @@
             </li>
         </ul>
     </div>
+    {% if error %}
+        <div class="error">
+            <h1>Error:</h1>
+            {{ error }}
+        </div>
+    {% endif %}
     <div class="container">
     {% block content %}{% endblock %}
     </div>
+    <br/>
 </body>
 </html>

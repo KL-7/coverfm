@@ -1,18 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
-    <b><a href='/update/all'>Update all with auto-update</a>
-    <br/>
-    <a href='/update/reset'>Reset all waiting for update</a></b>
-    <br/>
-    {% if toparts %}
+    {% if self_toparts %}
+        <h1>Your TopArts</h1>
         <ol>
-            {% for ta in toparts %}
-                <li><a href="{{ ta.url }}">{{ ta.owner }}  ({{ta.nick}}, 
-                {{ta.period}}, {{ta.width}}x{{ta.height}})</a>
+            {% for ta in self_toparts %}
+                <li><a href="{{ ta.url }}">{{ta.nick}}, {{ta.period}}, 
+                {{ta.width}}x{{ta.height}}</a>
                 <br/>
-                <a href="/update?id={{ ta.id }}">Update</a> <a href="/">Delete</a></li>
+                <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
+                title="{{ ta.nick }}'s {{ ta.period }}">View</a>
+                <a href="/update?id={{ ta.id }}">Update</a> 
+                <a href="/delete?id={{ ta.id }}">Delete</a></li>
             {% endfor %}
         </ol>
         <br/>
     {% endif %}
+    {% if user_is_admin %}
+        <h1>Users' TopArts</h1>
+        <b><a href='/update/all'>Update all with auto-update</a>
+        <br/>
+        <a href='/update/reset'>Reset all waiting for update</a></b>
+        <br/>
+        <ol>
+            {% for ta in toparts %}
+                <li><a href="{{ ta.url }}">{{ta.nick}}, {{ta.period}}, 
+                {{ta.width}}x{{ta.height}} ({{ta.owner}})</a>
+                <br/>
+                <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
+                title="{{ ta.nick }}'s {{ ta.period }}">View</a>
+                <a href="/update?id={{ ta.id }}">Update</a> 
+                <a href="/delete?id={{ ta.id }}">Delete</a></li>
+            {% endfor %}
+        </ol>
+    {% endif %}    
 {% endblock %}

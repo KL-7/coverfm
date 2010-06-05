@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+    <div id="generated">
+        <h2>TopArt code:</h2>
+        <code>[quote][align=center][size=10][b]{{ nick }}'s Top Albums[/b][/size][/align][/quote]
+        [url={{ host }}][img]{{ host }}/{{ topart.url }}.jpg[/img][/url]</code>
+        <h2>TopArt Image:</h2>
+        <img class="topart" src="/{{ topart.url }}.jpg"/>
+    </div>
+{% endblock %}

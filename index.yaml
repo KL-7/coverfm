@@ -15,3 +15,9 @@ indexes:
   - name: auto_upd
   - name: wait_for_upd
   - name: last_upd_date
+
+- kind: TopArt
+  properties:
+  - name: owner
+  - name: last_upd_date
+    direction: desc
