@@ -49,14 +49,20 @@ class TopArt(db.Model):
     def id(self):
         '''Return TopArt ID.'''
         return self.key().id()
-
+        
+    def __str__(self):
+        return 'nick=%s, period=%s, size=%dx%d' % (self.nick,
+                        self.period, self.width, self.height)
+                        
 
 def get_topart_url(nick, period, w, h):
     '''Generate url for TopArt with specific parameters.'''
-    return '/'.join(('topart', nick, period, '%dx%d' % (w, h)))
+    return '/topart/%s/%s/%dx%d' % (nick, period, w, h)
 
 
-# Application request handlers
+##################################
+## Application request handlers ##
+##################################
 
 class BaseRequestHandler(webapp.RequestHandler):
     '''Base request handler class. Add basic information about the user to the request.'''
@@ -94,17 +100,6 @@ class BaseRequestHandler(webapp.RequestHandler):
             else:
                 method(self, *args, **kwargs)
         return wrapped       
-        
-        
-    @staticmethod
-    def admin_only(method):
-        '''Decorate method in a such way that it will be processed only for admin users.'''
-        def wrapped(self, *args, **kwargs):
-            if not users.is_current_user_admin():
-                return self.redirect('/')
-            else:
-                method(self, *args, **kwargs)
-        return wrapped           
         
 
 class MainPage(BaseRequestHandler):
@@ -149,7 +144,7 @@ class FAQ(BaseRequestHandler):
         self.generate('faq.html')
 
 
-class UserTopArtImage(BaseRequestHandler):
+class TopArtImage(BaseRequestHandler):
     def get(self, nick, period, width, height):
         width = int(width)
         height = int(height)
@@ -159,7 +154,7 @@ class UserTopArtImage(BaseRequestHandler):
             self.response.out.write(topart.image)
 
 
-class UserTopArtPage(BaseRequestHandler):
+class TopArtPage(BaseRequestHandler):
     @BaseRequestHandler.authorized_only
     def get(self, nick, period, width, height):
         width = int(width)
@@ -183,7 +178,7 @@ class ManageTopArts(BaseRequestHandler):
         toparts = []
         if users.is_current_user_admin():
             toparts = TopArt.all()
-            toparts = toparts.order('-last_upd_date')
+            toparts = toparts.order('last_upd_date')
             toparts = toparts.fetch(20)
                         
         #toparts = [{'topart': topart, 'url': topart.url()} for topart in toparts]
@@ -193,8 +188,13 @@ class ManageTopArts(BaseRequestHandler):
 class UpdateAllTopArts(BaseRequestHandler):
     '''Add no more than config.UPDATE_LIMIT toparts to update task queue. Choose
     toparts, that arn't waiting for update and haven't been updated for the longest time.'''
-    @BaseRequestHandler.admin_only
     def get(self):
+        logging.info('UPDATE all')
+        self.fill_update_queue()
+        if not self.request.headers.get('X-AppEngine-Cron'):
+            self.redirect('/toparts')
+    
+    def fill_update_queue(self):
         toparts = TopArt.all()
         toparts = toparts.filter('auto_upd =', True)
         toparts = toparts.filter('wait_for_upd =', False)
@@ -203,93 +203,76 @@ class UpdateAllTopArts(BaseRequestHandler):
 
         #logging.info('UPDATE fill taskqueue (size=%d)' % toparts.count())
 
-        tasks = [taskqueue.Task(url='/update', method='GET',
-                            params={'id': topart.id()}) for topart in toparts]
+        tasks = [taskqueue.Task(url='/ad/update/%d' % topart.id()) for topart in toparts]
 
         set_wait_for_upd(toparts, True)
 
         for task in tasks:
             task.add('update')
-
-        if not self.request.headers.get('X-AppEngine-Cron'):
-            self.redirect('/toparts')
-
+        
 
 class ResetAllWaitingUpdates(BaseRequestHandler):
     '''Reset all toparts that are waiting for update, so they won't be skiped while updating.'''
-    @BaseRequestHandler.admin_only
     def get(self):
         toparts = TopArt.all().filter('wait_for_upd =', True)
         set_wait_for_upd(toparts, False)
-        logging.info('reset')
-        self.redirect('/toparts')
+        logging.info('RESET all')
+        return self.redirect('/toparts')
             
 
-class UpdateTopArt(BaseRequestHandler):
-    @BaseRequestHandler.authorized_only
-    def get(self):
-        if self.request.headers.get('X-AppEngine-TaskName'):
-            queue_request = True
-        else:
-            queue_request = False
-
-        try:
-            id = int(self.request.get('id'))
-            topart = TopArt.get_by_id(id)
-        except ValueError:
-            logging.info('id=%s is not a number' % self.request.get('id'))
-            if not queue_request:
-                return self.redirect('/toparts')
-
-        if not topart:
-            logging.error('''UPDATE ERROR: Failed to update id=%d -
-                    missing previous topart''' % id)
-            if not queue_request:
-                return self.redirect('/toparts')
-
-        info = 'nick=%s, period=%s, size=%dx%d' % (topart.nick,
-                    topart.period, topart.width, topart.height)
-
-        if queue_request:
-            if topart.wait_for_upd:
-                topart.wait_for_upd = False
-            else:
-                logging.info('UPDATE: topart id=%d is not waiting for update' % id)
-                return
-        elif not (users.is_current_user_admin() or users.get_current_user() == topart.owner):
-            return self.redirect('/')
-                    
+class UpdateTopArtRequestHandler(BaseRequestHandler):
+    def update_topart(self, topart):
         img, error = generate_topart(topart.nick, topart.period,
                         topart.width, topart.height)
-
         if not error:
             topart.image = img
             topart.last_upd_date = datetime.datetime.now()
-            topart.put()
             #logging.info('memcache.delete in UpdateTopArts')
             memcache.delete(topart.url())
-            logging.info('UPDATED %s' % info)
+            logging.info('UPDATED %s' % topart)
+            return True
         else:
-            if queue_request:
-                topart.put()
             logging.error('''UPDATE ERROR: %s\n Failed to update
                             %s  - generating error''' % (error, info))
+            return False
 
-        # if the request is not from taskqueue show updated topart
-        if not queue_request:
-            self.redirect(topart.url())
 
+class UpdateTopArt(UpdateTopArtRequestHandler):
+    @BaseRequestHandler.authorized_only
+    def get(self, id):
+        topart = TopArt.get_by_id(int(id))
+        if not topart:
+            return self.redirect('/toparts')
+        has_access = users.is_current_user_admin() or users.get_current_user() == topart.owner
+        if has_access and self.update_topart(topart):
+            topart.put()
+            return self.redirect(topart.url())
+        else:
+            return self.redirect('/toparts')
+    
+            
+class UpdateTopArtTask(UpdateTopArtRequestHandler):
+    def post(self, id):
+        #logging.info(self.request.headers)
+        if self.request.headers.get('X-AppEngine-TaskName'):
+            topart = TopArt.get_by_id(int(id))
+            if not topart:
+                logging.error('''UPDATE ERROR: Failed to update id=%d -
+                                missing previous topart''' % id)
+                           
+            if topart.wait_for_upd:
+                self.update_topart(topart)
+                topart.wait_for_upd = False
+                topart.put()
+        else:
+            return self.redirect('/')                
+            
             
 class DeleteTopArt(BaseRequestHandler):
     @BaseRequestHandler.authorized_only
-    def get(self):
-        try:
-            id = int(self.request.get('id'))
-            topart = TopArt.get_by_id(id)
-        except ValueError:
-            logging.info('id=%s is not a number' % self.request.get('id'))
-            return self.redirect('/')
-
+    def get(self, id):
+        topart = TopArt.get_by_id(int(id))
+        
         if not topart:
             logging.error('''DELETE ERROR: Failed to delete id=%d -
                     missing topart''' % id)
@@ -298,7 +281,7 @@ class DeleteTopArt(BaseRequestHandler):
         if not (users.is_current_user_admin() or users.get_current_user() == topart.owner):
             return self.redirect('/')
         
-        logging.info('Delete id=%d' % id)
+        logging.info('DELETED: %s' % topart.info())
         topart.delete()
         self.redirect('/toparts')
             
@@ -454,13 +437,14 @@ def get_user_info():
 application = webapp.WSGIApplication(
                         [('/', MainPage),
                         ('/faq', FAQ),
-                        ('/update', UpdateTopArt),
-                        ('/update/all', UpdateAllTopArts),
-                        ('/reset/all', ResetAllWaitingUpdates),
-                        ('/delete', DeleteTopArt),
+                        ('/update/(\d+)', UpdateTopArt),
+                        ('/ad/update/(\d+)', UpdateTopArtTask),
+                        ('/ad/update/all', UpdateAllTopArts),
+                        ('/ad/reset/all', ResetAllWaitingUpdates),
+                        ('/delete/(\d+)', DeleteTopArt),
                         ('/toparts', ManageTopArts),
-                        ('/topart/(.*)/(.*)/(\d+)x(\d+).jpg', UserTopArtImage),
-                        ('/topart/(.*)/(.*)/(\d+)x(\d+)', UserTopArtPage)],
+                        ('/topart/(.*)/(.*)/(\d+)x(\d+).jpg', TopArtImage),
+                        ('/topart/(.*)/(.*)/(\d+)x(\d+)', TopArtPage)],
                         debug=config.DEBUG)
 
 # Application main function

@@ -9,17 +9,17 @@
                 <br/>
                 <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
                 title="{{ ta.nick }}'s {{ ta.period }}">View</a>
-                <a href="/update?id={{ ta.id }}">Update</a> 
-                <a href="/delete?id={{ ta.id }}">Delete</a></li>
+                <a href="/update/{{ ta.id }}">Update</a> 
+                <a href="/delete/{{ ta.id }}">Delete</a></li>
             {% endfor %}
         </ol>
         <br/>
     {% endif %}
     {% if user_is_admin %}
         <h1>Users' TopArts</h1>
-        <b><a href='/update/all'>Update all with auto-update</a>
+        <b><a href='/ad/update/all'>Update all with auto-update</a>
         <br/>
-        <a href='/update/reset'>Reset all waiting for update</a></b>
+        <a href='/ad/reset/all'>Reset all waiting for update</a></b>
         <br/>
         <ol>
             {% for ta in toparts %}
@@ -28,8 +28,8 @@
                 <br/>
                 <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
                 title="{{ ta.nick }}'s {{ ta.period }}">View</a>
-                <a href="/update?id={{ ta.id }}">Update</a> 
-                <a href="/delete?id={{ ta.id }}">Delete</a></li>
+                <a href="/update/{{ ta.id }}">Update</a> 
+                <a href="/delete/{{ ta.id }}">Delete</a></li>
             {% endfor %}
         </ol>
     {% endif %}    

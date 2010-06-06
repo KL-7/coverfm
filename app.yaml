@@ -24,5 +24,9 @@ handlers:
 - url: /stats.*
   script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
 
+- url: /ad/.*
+  login: admin
+  script: coverfm.py
+
 - url: /.*
   script: coverfm.py

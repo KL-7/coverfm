@@ -9,7 +9,7 @@ from libs import pylast
 DEBUG = True
 
 # Appstats settings
-APP_STATS = True
+APP_STATS = False
 APP_STATS_RECORD_FRACTION = 0.4
 
 # Last.fm api_key stored in lastfm_api_info
