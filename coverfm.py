@@ -410,8 +410,8 @@ def composite_arts(imgs, w, h):
     
 def is_user_authorized():
     '''Return True if user is allowed to use the application.'''
-    return True if users.get_current_user() else False
-    #return users.is_current_user_admin()
+    #return True if users.get_current_user() else False
+    return users.is_current_user_admin()
 
 
 def get_user_info():
