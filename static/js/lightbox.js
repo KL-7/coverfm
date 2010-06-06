@@ -207,10 +207,10 @@ Lightbox.prototype = {
         // stretch overlay to fill page and fade in
         var arrayPageSize = this.getPageSize();
         
-		// Edited by KL-7
+        // Edited by KL-7
         // original: $('overlay').setStyle({ width: arrayPageSize[0] + 'px', height: arrayPageSize[1] + 'px' });
-		$('overlay').setStyle({ width: '100%', height: arrayPageSize[1] + 'px' });
-		
+        $('overlay').setStyle({ width: '100%', height: arrayPageSize[1] + 'px' });
+        
         new Effect.Appear(this.overlay, { duration: this.overlayDuration, from: 0.0, to: LightboxOptions.overlayOpacity });
 
         this.imageArray = [];
@@ -233,7 +233,10 @@ Lightbox.prototype = {
         var arrayPageScroll = document.viewport.getScrollOffsets();
         var lightboxTop = arrayPageScroll[1] + (document.viewport.getHeight() / 10);
         var lightboxLeft = arrayPageScroll[0];
-        this.lightbox.setStyle({ top: lightboxTop + 'px', left: lightboxLeft + 'px' }).show();
+
+        // Edited by KL-7
+        // original: this.lightbox.setStyle({ top: lightboxTop / 2 + 'px', left: lightboxLeft + 'px' }).show();
+        this.lightbox.setStyle({ top: lightboxTop / 2 + 'px', left: lightboxLeft + 'px' }).show();
         
         this.changeImage(imageNum);
     },

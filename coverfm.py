@@ -117,6 +117,10 @@ class MainPage(BaseRequestHandler):
         period = self.request.get('period')
         w = int(self.request.get('width'))
         h = int(self.request.get('height'))
+        if self.request.get('autoupd') == 'on':
+            auto_upd = True
+        else:
+            auto_upd = False
 
         # try to get topart from cache or db
         topart = get_topart(nick, period, w, h, False)
@@ -131,6 +135,7 @@ class MainPage(BaseRequestHandler):
             topart = TopArt(nick=nick, period=period, width=w, height=h)
             topart.owner = users.get_current_user()
             topart.image = img
+            topart.auto_upd = auto_upd
             topart.put()
             #logging.info('new request for key=%s' % topart.key())
             #logging.info('memcache.set in MainPage')
@@ -170,19 +175,16 @@ class ManageTopArts(BaseRequestHandler):
     '''TopArts managing page request handler.'''
     @BaseRequestHandler.authorized_only
     def get(self):
-        self_toparts = TopArt.all()
-        self_toparts = self_toparts.filter('owner =', users.get_current_user())
-        self_toparts = self_toparts.order('-last_upd_date')
-        self_toparts = self_toparts.fetch(10)
-                        
-        toparts = []
+        toparts = TopArt.all()
         if users.is_current_user_admin():
-            toparts = TopArt.all()
             toparts = toparts.order('last_upd_date')
             toparts = toparts.fetch(20)
+        else:
+            toparts = toparts.filter('owner =', users.get_current_user())
+            toparts = toparts.order('-last_upd_date')
+            toparts = toparts.fetch(10)
                         
-        #toparts = [{'topart': topart, 'url': topart.url()} for topart in toparts]
-        self.generate('toparts.html', {'self_toparts': self_toparts, 'toparts': toparts})
+        self.generate('toparts.html', { 'toparts': toparts })
 
 
 class UpdateAllTopArts(BaseRequestHandler):
@@ -281,7 +283,7 @@ class DeleteTopArt(BaseRequestHandler):
         if not (users.is_current_user_admin() or users.get_current_user() == topart.owner):
             return self.redirect('/')
         
-        logging.info('DELETED: %s' % topart.info())
+        logging.info('DELETED: %s' % topart)
         topart.delete()
         self.redirect('/toparts')
             
@@ -408,8 +410,8 @@ def composite_arts(imgs, w, h):
     
 def is_user_authorized():
     '''Return True if user is allowed to use the application.'''
-    #return True if users.get_current_user() else False
-    return users.is_current_user_admin()
+    return True if users.get_current_user() else False
+    #return users.is_current_user_admin()
 
 
 def get_user_info():

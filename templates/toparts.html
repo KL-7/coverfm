@@ -1,36 +1,51 @@
 {% extends "base.html" %}
 {% block content %}
-    {% if self_toparts %}
-        <h1>Your TopArts</h1>
-        <ol>
-            {% for ta in self_toparts %}
-                <li><a href="{{ ta.url }}">{{ta.nick}}, {{ta.period}}, 
-                {{ta.width}}x{{ta.height}}</a>
-                <br/>
-                <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
-                title="{{ ta.nick }}'s {{ ta.period }}">View</a>
-                <a href="/update/{{ ta.id }}">Update</a> 
-                <a href="/delete/{{ ta.id }}">Delete</a></li>
-            {% endfor %}
-        </ol>
-        <br/>
-    {% endif %}
     {% if user_is_admin %}
         <h1>Users' TopArts</h1>
         <b><a href='/ad/update/all'>Update all with auto-update</a>
         <br/>
         <a href='/ad/reset/all'>Reset all waiting for update</a></b>
         <br/>
-        <ol>
+        <ol id="talist">
             {% for ta in toparts %}
-                <li><a href="{{ ta.url }}">{{ta.nick}}, {{ta.period}}, 
-                {{ta.width}}x{{ta.height}} ({{ta.owner}})</a>
-                <br/>
-                <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
-                title="{{ ta.nick }}'s {{ ta.period }}">View</a>
-                <a href="/update/{{ ta.id }}">Update</a> 
-                <a href="/delete/{{ ta.id }}">Delete</a></li>
+                <li><div class="ta">
+                    <a href="{{ ta.url }}" title="Owner: {{ta.owner}}, last update: {{ta.last_upd_date.date}}">
+                    {% ifequal user_name ta.owner.email %}
+                        <b>
+                    {% endifequal %}
+                    {{ta.nick}}, {{ta.period}}, {{ta.width}}x{{ta.height}}
+                    {% ifequal user_name ta.owner.email %}
+                        </b>
+                    {% endifequal %}
+                    </a>
+                    <br/>
+                    <span class="small">
+                        <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
+                        title="{{ ta.nick }}'s {{ ta.period }}">View</a>
+                        <a href="/update/{{ ta.id }}">Update</a> 
+                        <a href="/delete/{{ ta.id }}">Delete</a>
+                    </span>
+                </div></li>
             {% endfor %}
         </ol>
-    {% endif %}    
+    {% else %}    
+        <h1>Your TopArts</h1>
+        <ol id="talist">
+            {% for ta in toparts %}
+                <li><div class="ta">
+                    <a href="{{ ta.url }}" title="Owner: {{ta.owner}}, last update: {{ta.last_upd_date.date}}">
+                        <b>{{ta.nick}}, {{ta.period}}, {{ta.width}}x{{ta.height}}</b>
+                    </a>
+                    <br/>
+                    <span class="small">
+                        <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
+                        title="{{ ta.nick }}'s {{ ta.period }}">View</a>
+                        <a href="/update/{{ ta.id }}">Update</a> 
+                        <a href="/delete/{{ ta.id }}">Delete</a>
+                    </span>
+                    </div></li>
+            {% endfor %}
+        </ol>
+        <br/>
+    {% endif %}
 {% endblock %}
