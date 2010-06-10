@@ -75,9 +75,14 @@ a:hover {
     border-left: solid 2px #b7ddf2;
     position: relative;
     padding-left: 6px;
+	padding-right: 1px;
     padding-bottom: 3px;
     padding-top: 3px;
     margin-left: 3px;
+}
+
+.top-navigation li:first-child {
+	border-left: none;
 }
 
 .top-navigation .separator {

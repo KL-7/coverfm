@@ -14,20 +14,18 @@
 <body>
     <div id="header">    
         <ul class="top-navigation">
-            <li style="border: none;">
+            <li>
                 {% if user_is_auth %}<a href="/">{% endif %}
                 Home
                 {% if user_is_auth %}</a>{% endif %}
             </li>
-            {% if user_name %}
+            {% if user_is_auth %}
                 <li>
-                    {% if user_is_auth %}<a href="{{ host }}/toparts">{% endif %}
-                    {{ user_name }}
-                    {% if user_is_auth %}</a>{% endif %}
+                    <a href="{{ host }}/toparts">{{ user_name }}</a>
                 </li>
             {% endif %}
             <li>
-                <a href="{{ sign_url }}">{{ sign }}</a>
+                <a href="{{sign_url}}">{{sign}}</a>
             </li>
             <li>
                 <a href="/faq">FAQ</a>
