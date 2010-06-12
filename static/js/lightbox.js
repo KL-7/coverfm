@@ -188,10 +188,12 @@ Lightbox.prototype = {
         this.updateImageList = Prototype.emptyFunction;
 
         document.observe('click', (function(event){
-            var target = event.findElement('a[rel^=lightbox]') || event.findElement('area[rel^=lightbox]');
-            if (target) {
-                event.stop();
-                this.start(target);
+            if (!event.isRightClick()) {  // <- Added by KL-7
+                var target = event.findElement('a[rel^=lightbox]') || event.findElement('area[rel^=lightbox]');
+                if (target) {
+                    event.stop();
+                    this.start(target);
+                }
             }
         }).bind(this));
     },
