@@ -49,11 +49,11 @@ class TopArt(db.Model):
     def id(self):
         '''Return TopArt ID.'''
         return self.key().id()
-        
+
     def __str__(self):
         return 'nick=%s, period=%s, size=%dx%d' % (self.nick,
                         self.period, self.width, self.height)
-                        
+
 
 def get_topart_url(nick, period, w, h):
     '''Generate url for TopArt with specific parameters.'''
@@ -99,8 +99,8 @@ class BaseRequestHandler(webapp.RequestHandler):
                 return self.redirect('/faq')
             else:
                 method(self, *args, **kwargs)
-        return wrapped       
-        
+        return wrapped
+
 
 class MainPage(BaseRequestHandler):
     '''MainPage request.'''
@@ -170,7 +170,7 @@ class TopArtPage(BaseRequestHandler):
         else:
             self.redirect('/toparts')
 
-            
+
 class ManageTopArts(BaseRequestHandler):
     '''TopArts managing page request handler.'''
     @BaseRequestHandler.authorized_only
@@ -183,7 +183,7 @@ class ManageTopArts(BaseRequestHandler):
             toparts = toparts.filter('owner =', users.get_current_user())
             toparts = toparts.order('-last_upd_date')
             toparts = toparts.fetch(10)
-                        
+
         self.generate('toparts.html', { 'toparts': toparts })
 
 
@@ -195,7 +195,7 @@ class UpdateAllTopArts(BaseRequestHandler):
         self.fill_update_queue()
         if not self.request.headers.get('X-AppEngine-Cron'):
             self.redirect('/toparts')
-    
+
     def fill_update_queue(self):
         toparts = TopArt.all()
         toparts = toparts.filter('auto_upd =', True)
@@ -211,7 +211,7 @@ class UpdateAllTopArts(BaseRequestHandler):
 
         for task in tasks:
             task.add('update')
-        
+
 
 class ResetAllWaitingUpdates(BaseRequestHandler):
     '''Reset all toparts that are waiting for update, so they won't be skiped while updating.'''
@@ -220,7 +220,7 @@ class ResetAllWaitingUpdates(BaseRequestHandler):
         set_wait_for_upd(toparts, False)
         logging.info('RESET all')
         return self.redirect('/toparts')
-            
+
 
 class UpdateTopArtRequestHandler(BaseRequestHandler):
     def update_topart(self, topart):
@@ -251,8 +251,8 @@ class UpdateTopArt(UpdateTopArtRequestHandler):
             return self.redirect(topart.url())
         else:
             return self.redirect('/toparts')
-    
-            
+
+
 class UpdateTopArtTask(UpdateTopArtRequestHandler):
     def post(self, id):
         #logging.info(self.request.headers)
@@ -261,20 +261,20 @@ class UpdateTopArtTask(UpdateTopArtRequestHandler):
             if not topart:
                 logging.error('''UPDATE ERROR: Failed to update id=%d -
                                 missing previous topart''' % id)
-                           
+
             if topart.wait_for_upd:
                 self.update_topart(topart)
                 topart.wait_for_upd = False
                 topart.put()
         else:
-            return self.redirect('/')                
-            
-            
+            return self.redirect('/')
+
+
 class DeleteTopArt(BaseRequestHandler):
     @BaseRequestHandler.authorized_only
     def get(self, id):
         topart = TopArt.get_by_id(int(id))
-        
+
         if not topart:
             logging.error('''DELETE ERROR: Failed to delete id=%d -
                     missing topart''' % id)
@@ -282,11 +282,11 @@ class DeleteTopArt(BaseRequestHandler):
 
         if not (users.is_current_user_admin() or users.get_current_user() == topart.owner):
             return self.redirect('/')
-        
+
         logging.info('DELETED: %s' % topart)
         topart.delete()
         self.redirect('/toparts')
-            
+
 
 # Useful functions
 
@@ -407,7 +407,7 @@ def composite_arts(imgs, w, h):
 
     return imgs[0][0]
 
-    
+
 def is_user_authorized():
     '''Return True if user is allowed to use the application.'''
     #return True if users.get_current_user() else False

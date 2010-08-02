@@ -22,13 +22,13 @@
                     <span class="small">
                         <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
                         title="{{ ta.nick }}'s {{ ta.period }}">Preview</a>
-                        <a href="/update/{{ ta.id }}">Update</a> 
+                        <a href="/update/{{ ta.id }}">Update</a>
                         <a href="/delete/{{ ta.id }}">Delete</a>
                     </span>
                 </div></li>
             {% endfor %}
         </ol>
-    {% else %}    
+    {% else %}
         <h1>Your TopArts</h1>
         <ol id="talist">
             {% for ta in toparts %}
@@ -40,7 +40,7 @@
                     <span class="small">
                         <a href="{{ ta.url }}.jpg" rel="lightbox[TopArts]"
                         title="{{ ta.nick }}'s {{ ta.period }}">Preview</a>
-                        <a href="/update/{{ ta.id }}">Update</a> 
+                        <a href="/update/{{ ta.id }}">Update</a>
                         <a href="/delete/{{ ta.id }}">Delete</a>
                     </span>
                     </div></li>
