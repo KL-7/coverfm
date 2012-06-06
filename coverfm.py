@@ -18,6 +18,8 @@ from google.appengine.ext import webapp
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 
+from google.appengine.api.urlfetch import DownloadError
+
 import config
 
 from libs import pylast
@@ -235,7 +237,7 @@ class UpdateTopArtRequestHandler(BaseRequestHandler):
             return True
         else:
             logging.error('''UPDATE ERROR: %s\n Failed to update
-                            %s  - generating error''' % (error, info))
+                            %s  - generating error''' % (error, topart.id()))
             return False
 
 
@@ -360,20 +362,22 @@ def generate_topart(nick, period, w, h):
                 h = 1
                 w = len(arts_urls)
 
-        imgs = []
-        for i in xrange(h):
-            for j in xrange(w):
-                url = arts_urls[i * w + j]
-                img = urlfetch.Fetch(url).content
-                img = images.resize(img, size, size, images.JPEG)
-                imgs.append((img, size * j, size * i, 1.0, images.TOP_LEFT))
-
-        if imgs:
-            width = w * size
-            height = h * size
-            topart = composite_arts(imgs, width, height)
-        else:
-            error = 'Failed to fetch images'
+        try:
+            imgs = []
+            for i in xrange(h):
+                for j in xrange(w):
+                    url = arts_urls[i * w + j]
+                    img = urlfetch.Fetch(url).content
+                    img = images.resize(img, size, size, images.JPEG)
+                    imgs.append((img, size * j, size * i, 1.0, images.TOP_LEFT))
+            if imgs:
+                width = w * size
+                height = h * size
+                topart = composite_arts(imgs, width, height)
+            else:
+                error = 'Failed to fetch images'
+        except DownloadError, e:
+            error = 'Failed to fetch images: ' + str(e)
     else:
         error = 'Topart generating failed'
 
