@@ -10,13 +10,11 @@
             {% for ta in toparts %}
                 <li><div class="ta">
                     <a href="{{ ta.url }}" title="Owner: {{ta.owner}}, last update: {{ta.last_upd_date.date}}">
-                    {% ifequal user_name ta.owner.email %}
-                        <b>
-                    {% endifequal %}
-                    {{ta.nick}}, {{ta.period}}, {{ta.width}}x{{ta.height}}
-                    {% ifequal user_name ta.owner.email %}
-                        </b>
-                    {% endifequal %}
+                        {% ifequal user_name ta.owner.email %}<b>{% endifequal %}
+                        {{ta.nick}}, {{ta.period}}, {{ta.width}}x{{ta.height}}
+                        {% ifequal user_name ta.owner.email %}</b>{% endifequal %}
+
+                        {% ifnotequal user_name ta.owner.email %}({{ta.owner.email}}){% endifnotequal %}
                     </a>
                     <br/>
                     <span class="small">

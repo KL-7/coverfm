@@ -27,6 +27,14 @@ from libs import pylast
 
 # Application models
 
+class Permission(db.Model):
+    user = db.UserProperty()
+
+    @staticmethod
+    def authorized():
+        '''Return True if user is allowed to use the application.'''
+        return users.is_current_user_admin() or Permission.all().filter('user =', users.get_current_user()).count() > 0
+
 class TopArt(db.Model):
     '''Store user's topart information:
         nick - user's nick on last.fm;
@@ -97,7 +105,7 @@ class BaseRequestHandler(webapp.RequestHandler):
     def authorized_only(method):
         '''Decorate method in a such way that it will be processed only for authorized users.'''
         def wrapped(self, *args, **kwargs):
-            if not is_user_authorized():
+            if not Permission.authorized():
                 return self.redirect('/faq')
             else:
                 method(self, *args, **kwargs)
@@ -412,12 +420,6 @@ def composite_arts(imgs, w, h):
     return imgs[0][0]
 
 
-def is_user_authorized():
-    '''Return True if user is allowed to use the application.'''
-    #return True if users.get_current_user() else False
-    return users.is_current_user_admin()
-
-
 def get_user_info():
     '''Gather user information and generate sign in/out url.'''
     user = users.get_current_user()
@@ -427,7 +429,7 @@ def get_user_info():
         sign_label = 'Sign out'
         user_name = users.get_current_user().email()
         is_admin = users.is_current_user_admin()
-        is_auth = is_user_authorized()
+        is_auth = Permission.authorized()
     else:
         sign_url = users.create_login_url('/')
         sign_label = 'Sign in'
