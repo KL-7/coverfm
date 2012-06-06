@@ -3,6 +3,9 @@ version: 8
 runtime: python
 api_version: 1
 
+builtins:
+- remote_api: on
+
 handlers:
 - url: /favicon\.ico
   static_files: static/images/favicon.ico
