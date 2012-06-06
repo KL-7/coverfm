@@ -28,12 +28,16 @@ from libs import pylast
 # Application models
 
 class Permission(db.Model):
-    user = db.UserProperty()
+    email = db.StringProperty()
 
-    @staticmethod
-    def authorized():
+    @classmethod
+    def authorized(cls):
         '''Return True if user is allowed to use the application.'''
-        return users.is_current_user_admin() or Permission.all().filter('user =', users.get_current_user()).count() > 0
+        return users.is_current_user_admin() or cls.has_permission(users.get_current_user())
+
+    @classmethod
+    def has_permission(cls, user):
+        return user is not None and Permission.all().filter('email =', user.email()).count() > 0
 
 class TopArt(db.Model):
     '''Store user's topart information:
