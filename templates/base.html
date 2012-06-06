@@ -24,6 +24,7 @@
                     <a href="{{ host }}/toparts">{{ user_name }}</a>
                 </li>
             {% endif %}
+            {% if user_is_admin %}<li><a href="/permissions">Permissions</a></li>{% endif %}
             <li>
                 <a href="{{sign_url}}">{{sign}}</a>
             </li>

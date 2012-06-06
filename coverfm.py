@@ -30,6 +30,9 @@ from libs import pylast
 class Permission(db.Model):
     email = db.StringProperty()
 
+    def id(self):
+        return self.key().id()
+
     @classmethod
     def authorized(cls):
         '''Return True if user is allowed to use the application.'''
@@ -115,6 +118,16 @@ class BaseRequestHandler(webapp.RequestHandler):
                 method(self, *args, **kwargs)
         return wrapped
 
+    @staticmethod
+    def admin_only(method):
+        '''Decorate method in a such way that it will be processed only for admin users.'''
+        def wrapped(self, *args, **kwargs):
+            if not users.is_current_user_admin():
+                return self.redirect('/')
+            else:
+                method(self, *args, **kwargs)
+        return wrapped
+
 
 class MainPage(BaseRequestHandler):
     '''MainPage request.'''
@@ -156,6 +169,37 @@ class MainPage(BaseRequestHandler):
             memcache.set(topart.url(), topart, config.EXPIRATION_TIME)
 
         self.redirect(topart.url())
+
+
+class Permissions(BaseRequestHandler):
+    '''MainPage request.'''
+    @BaseRequestHandler.admin_only
+    def get(self):
+        permissions = Permission.all().fetch(10)
+        self.generate('permissions.html', { 'permissions': permissions })
+
+    @BaseRequestHandler.admin_only
+    def post(self):
+        email = self.request.get('email')
+
+        if email and not Permission.all().filter('email =', email).count():
+            Permission(email=email).put()
+
+        self.redirect('/permissions')
+
+
+class DeletePermission(BaseRequestHandler):
+    @BaseRequestHandler.admin_only
+    def get(self, id):
+        permission = Permission.get_by_id(int(id))
+
+        if not permission:
+            logging.error('''DELETE ERROR: Failed to delete id=%d -
+                    missing permission''' % id)
+
+        logging.info('DELETED: %s permission' % permission)
+        permission.delete()
+        self.redirect('/permissions')
 
 
 class FAQ(BaseRequestHandler):
@@ -447,16 +491,20 @@ def get_user_info():
 # Application instance
 
 application = webapp.WSGIApplication(
-                        [('/', MainPage),
-                        ('/faq', FAQ),
-                        ('/update/(\d+)', UpdateTopArt),
-                        ('/ad/update/(\d+)', UpdateTopArtTask),
-                        ('/ad/update/all', UpdateAllTopArts),
-                        ('/ad/reset/all', ResetAllWaitingUpdates),
-                        ('/delete/(\d+)', DeleteTopArt),
-                        ('/toparts', ManageTopArts),
-                        ('/topart/(.*)/(.*)/(\d+)x(\d+).jpg', TopArtImage),
-                        ('/topart/(.*)/(.*)/(\d+)x(\d+)', TopArtPage)],
+                        [
+                            ('/', MainPage),
+                            ('/faq', FAQ),
+                            ('/update/(\d+)', UpdateTopArt),
+                            ('/ad/update/(\d+)', UpdateTopArtTask),
+                            ('/ad/update/all', UpdateAllTopArts),
+                            ('/ad/reset/all', ResetAllWaitingUpdates),
+                            ('/delete/(\d+)', DeleteTopArt),
+                            ('/toparts', ManageTopArts),
+                            ('/topart/(.*)/(.*)/(\d+)x(\d+).jpg', TopArtImage),
+                            ('/topart/(.*)/(.*)/(\d+)x(\d+)', TopArtPage),
+                            ('/permissions', Permissions),
+                            ('/permission/delete/(\d+)', DeletePermission)
+                        ],
                         debug=config.DEBUG)
 
 # Application main function
