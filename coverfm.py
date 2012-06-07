@@ -113,6 +113,9 @@ class BaseRequestHandler(webapp.RequestHandler):
         '''Decorate method in a such way that it will be processed only for authorized users.'''
         def wrapped(self, *args, **kwargs):
             if not Permission.authorized():
+                user = users.get_current_user()
+                if user:
+                    logging.info('Unauthorized access from %s' % (user.email()))
                 return self.redirect('/faq')
             else:
                 method(self, *args, **kwargs)
