@@ -395,9 +395,10 @@ def get_arts_urls(nick, period=pylast.PERIOD_OVERALL, num=5,
     net = pylast.get_lastfm_network(api_key=config.LASTFM_API_KEY)
     arts_urls = []
     error = ''
+
     try:
         arts_urls = net.get_user(nick).get_top_albums_with_arts(period, size)
-        arts_urls = [ta['image'] for ta in arts_urls]
+        arts_urls = [ta.image for ta in arts_urls]
         arts_urls = filter(cover_filter, arts_urls)[:num]
     except pylast.WSError, e:
         error = str(e)
