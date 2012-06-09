@@ -2,8 +2,10 @@
 {% block content %}
     <h1>Permissions</h1>
 
+    <br/>
+
     <form action="/permissions" enctype="multipart/form-data" method="post">
-        <label for="email">Email</label>
+        <label for="email">Email: </label>
         <input id="email" name="email" type="text">
         <input type="submit" value="Add"/>
     </form>
@@ -11,7 +13,12 @@
     <ul>
         {% for permission in permissions %}
             <li>
-                {{permission.email}} <span class="small"><a href="/permission/delete/{{permission.id}}">Delete</a></span>
+                {{permission.email}}
+                <span class="small">
+                    <a href="/permission/delete/{{permission.id}}" onclick="return confirm('Are you sure you want to delete this permission?');">
+                        Delete
+                    </a>
+                </span>
             </li>
         {% endfor %}
     </ol>
