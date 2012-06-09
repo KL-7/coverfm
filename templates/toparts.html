@@ -6,44 +6,27 @@
         <br/>
         <a href='/ad/reset/all'>Reset all waiting for update</a></b>
         <br/>
-        <ol id="talist">
-            {% for ta in toparts %}
-                <li><div class="ta">
-                    <a href="{{ ta.url }}" title="Owner: {{ta.owner}}, last update: {{ta.last_upd_date.date}}">
-                        {% ifequal user_name ta.owner.email %}<b>{% endifequal %}
-                        {{ta.nick}}, {{ta.period}}, {{ta.width}}x{{ta.height}}
-                        {% ifequal user_name ta.owner.email %}</b>{% endifequal %}
-
-                        {% ifnotequal user_name ta.owner.email %}({{ta.owner.email}}){% endifnotequal %}
-                    </a>
-                    <br/>
-                    <span class="small">
-                        <a href="{{ ta.url }}.png" rel="lightbox[TopArts]"
-                        title="{{ ta.nick }}'s {{ ta.period }}">Preview</a>
-                        <a href="/update/{{ ta.id }}">Update</a>
-                        <a href="/delete/{{ ta.id }}" onclick="return confirm('Are you sure you want to delete this topart?');">Delete</a>
-                    </span>
-                </div></li>
-            {% endfor %}
-        </ol>
     {% else %}
         <h1>Your TopArts</h1>
-        <ol id="talist">
-            {% for ta in toparts %}
-                <li><div class="ta">
-                    <a href="{{ ta.url }}" title="Owner: {{ta.owner}}, last update: {{ta.last_upd_date.date}}">
-                        <b>{{ta.nick}}, {{ta.period}}, {{ta.width}}x{{ta.height}}</b>
-                    </a>
-                    <br/>
-                    <span class="small">
-                        <a href="{{ ta.url }}.png" rel="lightbox[TopArts]"
-                        title="{{ ta.nick }}'s {{ ta.period }}">Preview</a>
-                        <a href="/update/{{ ta.id }}">Update</a>
-                        <a href="/delete/{{ ta.id }}" onclick="return confirm('Are you sure you want to delete this topart?');">Delete</a>
-                    </span>
-                    </div></li>
-            {% endfor %}
-        </ol>
-        <br/>
     {% endif %}
+
+    <ol id="talist">
+        {% for ta in toparts %}
+            <li><div class="ta">
+                <a href="{{ ta.url }}" title="Owner: {{ta.owner}}, last update: {{ta.last_upd_date.date}}">
+                    {% ifequal user_name ta.owner.email %}
+                        <b>{{ta.nick}}, {{ta.period}}, {{ta.width}}x{{ta.height}}</b>
+                    {% else %}
+                        {{ta.nick}}, {{ta.period}}, {{ta.width}}x{{ta.height}} ({{ta.owner.email}})
+                    {% endifequal %}
+                </a>
+                <br/>
+                <span class="small">
+                    <a href="{{ ta.url }}.png" rel="lightbox[TopArts]" title="{{ ta.nick }}'s {{ ta.period }}">Preview</a>
+                    <a href="/update/{{ ta.id }}">Update</a>
+                    <a href="/delete/{{ ta.id }}" onclick="return confirm('Are you sure you want to delete this topart?');">Delete</a>
+                </span>
+            </div></li>
+        {% endfor %}
+    </ol>
 {% endblock %}
