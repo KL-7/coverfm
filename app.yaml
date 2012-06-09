@@ -34,7 +34,7 @@ handlers:
 
 - url: /ad/.*
   login: admin
-  script: coverfm.py
+  script: coverfm.application
 
 - url: /.*
-  script: coverfm.py
+  script: coverfm.application

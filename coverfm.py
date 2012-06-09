@@ -7,7 +7,9 @@ import os
 import logging
 import datetime
 import StringIO
-import Image
+
+from StringIO import StringIO
+from PIL import Image
 
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
@@ -430,11 +432,11 @@ def generate_topart(nick, period, w, h):
                 for j in xrange(w):
                     url = arts_urls[i * w + j]
 
-                    img = Image.open(StringIO.StringIO(urlfetch.Fetch(url).content))
+                    img = Image.open(StringIO(urlfetch.Fetch(url).content))
                     img.thumbnail((size, 'auto'))
                     canvas.paste(img.crop((0, 0, size, size)), (size * j, size * i))
 
-            output = StringIO.StringIO()
+            output = StringIO()
             canvas.save(output, format="JPEG")
             topart = output.getvalue()
             output.close()
@@ -516,12 +518,3 @@ application = webapp.WSGIApplication(
                             ('/permission/delete/(\d+)', DeletePermission)
                         ],
                         debug=config.DEBUG)
-
-# Application main function
-
-def main():
-    run_wsgi_app(application)
-
-
-if __name__ == '__main__':
-    main()
