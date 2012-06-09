@@ -21,7 +21,7 @@
                         <a href="{{ ta.url }}.png" rel="lightbox[TopArts]"
                         title="{{ ta.nick }}'s {{ ta.period }}">Preview</a>
                         <a href="/update/{{ ta.id }}">Update</a>
-                        <a href="/delete/{{ ta.id }}">Delete</a>
+                        <a href="/delete/{{ ta.id }}" onclick="return confirm('Are you sure you want to delete this topart?');">Delete</a>
                     </span>
                 </div></li>
             {% endfor %}
@@ -39,7 +39,7 @@
                         <a href="{{ ta.url }}.png" rel="lightbox[TopArts]"
                         title="{{ ta.nick }}'s {{ ta.period }}">Preview</a>
                         <a href="/update/{{ ta.id }}">Update</a>
-                        <a href="/delete/{{ ta.id }}">Delete</a>
+                        <a href="/delete/{{ ta.id }}" onclick="return confirm('Are you sure you want to delete this topart?');">Delete</a>
                     </span>
                     </div></li>
             {% endfor %}
