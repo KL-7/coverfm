@@ -10,6 +10,7 @@ import StringIO
 
 from StringIO import StringIO
 from PIL import Image
+from libs import pylast
 
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
@@ -24,9 +25,6 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.api.urlfetch import DownloadError
 
 import config
-
-from libs import pylast
-
 
 # Application models
 
@@ -170,8 +168,6 @@ class MainPage(BaseRequestHandler):
             topart.image = img
             topart.auto_upd = auto_upd
             topart.put()
-            #logging.info('new request for key=%s' % topart.key())
-            #logging.info('memcache.set in MainPage')
             memcache.set(topart.url(), topart, config.EXPIRATION_TIME)
 
         self.redirect(topart.url())
@@ -219,7 +215,7 @@ class TopArtImage(BaseRequestHandler):
         height = int(height)
         topart = get_topart(nick, period, width, height)
         if topart:
-            self.response.headers['Content-Type'] = 'image/jpeg'
+            self.response.headers['Content-Type'] = 'image/png'
             self.response.out.write(topart.image)
 
 
@@ -426,7 +422,7 @@ def generate_topart(nick, period, w, h):
                 w = len(arts_urls)
 
         try:
-            canvas = Image.new('RGB', (size * w, size * h))
+            canvas = Image.new('RGBA', (size * w, size * h))
 
             for i in xrange(h):
                 for j in xrange(w):
@@ -437,7 +433,7 @@ def generate_topart(nick, period, w, h):
                     canvas.paste(img.crop((0, 0, size, size)), (size * j, size * i))
 
             output = StringIO()
-            canvas.save(output, format="JPEG")
+            canvas.save(output, format="PNG")
             topart = output.getvalue()
             output.close()
         except DownloadError, e:
@@ -468,16 +464,6 @@ def opt_size(size):
             return i
 
     return 3
-
-
-def composite_arts(imgs, w, h):
-    MAX_COMPOSITE_NUM = 16
-    while len(imgs) > 1:
-        comp = images.composite(imgs[:MAX_COMPOSITE_NUM],
-                        w, h, output_encoding=images.JPEG)
-        imgs = [(comp, 0, 0, 1.0, images.TOP_LEFT)] + imgs[MAX_COMPOSITE_NUM:]
-
-    return imgs[0][0]
 
 
 def get_user_info():
@@ -512,6 +498,8 @@ application = webapp.WSGIApplication(
                             ('/ad/reset/all', ResetAllWaitingUpdates),
                             ('/delete/(\d+)', DeleteTopArt),
                             ('/toparts', ManageTopArts),
+                            ('/topart/(.*)/(.*)/(\d+)x(\d+).png', TopArtImage),
+                            # compatibility URL for previously generated TopArts
                             ('/topart/(.*)/(.*)/(\d+)x(\d+).jpg', TopArtImage),
                             ('/topart/(.*)/(.*)/(\d+)x(\d+)', TopArtPage),
                             ('/permissions', Permissions),
