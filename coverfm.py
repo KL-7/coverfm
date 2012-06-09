@@ -6,8 +6,9 @@ from __future__ import division
 import os
 import logging
 import datetime
+import StringIO
+import Image
 
-from google.appengine.api import images
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 from google.appengine.api import users
@@ -19,7 +20,6 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 
 from google.appengine.api.urlfetch import DownloadError
-from google.appengine.api.images import BadImageError
 
 import config
 
@@ -201,7 +201,7 @@ class DeletePermission(BaseRequestHandler):
             logging.error('''DELETE ERROR: Failed to delete id=%d -
                     missing permission''' % id)
 
-        logging.info('DELETED: %s permission' % permission)
+        logging.info('DELETED: %s permission' % permission.email)
         permission.delete()
         self.redirect('/permissions')
 
@@ -424,19 +424,20 @@ def generate_topart(nick, period, w, h):
                 w = len(arts_urls)
 
         try:
-            imgs = []
+            canvas = Image.new('RGB', (size * w, size * h))
+
             for i in xrange(h):
                 for j in xrange(w):
                     url = arts_urls[i * w + j]
-                    img = urlfetch.Fetch(url).content
-                    img = images.resize(img, size, size, images.JPEG)
-                    imgs.append((img, size * j, size * i, 1.0, images.TOP_LEFT))
-            if imgs:
-                width = w * size
-                height = h * size
-                topart = composite_arts(imgs, width, height)
-            else:
-                error = 'Failed to fetch images'
+
+                    img = Image.open(StringIO.StringIO(urlfetch.Fetch(url).content))
+                    img.thumbnail((size, 'auto'))
+                    canvas.paste(img.crop((0, 0, size, size)), (size * j, size * i))
+
+            output = StringIO.StringIO()
+            canvas.save(output, format="JPEG")
+            topart = output.getvalue()
+            output.close()
         except DownloadError, e:
             logging.error('DownloadError: %s (url - "%s")' % (e, url))
             error = 'Failed to fetch image ' + url
