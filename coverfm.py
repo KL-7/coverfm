@@ -19,6 +19,7 @@ from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp.util import run_wsgi_app
 
 from google.appengine.api.urlfetch import DownloadError
+from google.appengine.api.images import BadImageError
 
 import config
 
@@ -436,7 +437,11 @@ def generate_topart(nick, period, w, h):
             else:
                 error = 'Failed to fetch images'
         except DownloadError, e:
-            error = 'Failed to fetch images: ' + str(e)
+            logging.error('DownloadError: %s (url - "%s")' % (e, url))
+            error = 'Failed to fetch image ' + url
+        except BadImageError, e:
+            logging.error('BadImageError: %s (url - "%s")' % (e, url))
+            error = 'Failed to process image ' + url
     else:
         error = 'Topart generating failed'
 
