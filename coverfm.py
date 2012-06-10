@@ -499,8 +499,6 @@ application = webapp.WSGIApplication(
                             ('/delete/(\d+)', DeleteTopArt),
                             ('/toparts', ManageTopArts),
                             ('/topart/(.*)/(.*)/(\d+)x(\d+).png', TopArtImage),
-                            # compatibility URL for previously generated TopArts
-                            ('/topart/(.*)/(.*)/(\d+)x(\d+).jpg', TopArtImage),
                             ('/topart/(.*)/(.*)/(\d+)x(\d+)', TopArtPage),
                             ('/permissions', Permissions),
                             ('/permission/delete/(\d+)', DeletePermission)
