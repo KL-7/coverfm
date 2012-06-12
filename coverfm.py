@@ -388,48 +388,62 @@ def cover_filter(link):
     return link is not None and 'default_album' not in link and 'last' in link
 
 
-def get_arts_urls(nick, period=pylast.PERIOD_OVERALL, num=5,
+ERROR_RESERVE_SIZE = 10
+
+
+def get_arts_images(nick, period=pylast.PERIOD_OVERALL, num=5,
                         size=config.COVER_SIZE):
     net = pylast.get_lastfm_network(api_key=config.LASTFM_API_KEY)
-    arts_urls = []
+    images = []
     error = ''
 
     try:
-        arts_urls = net.get_user(nick).get_top_albums_with_arts(period, size)
-        arts_urls = [ta.image for ta in arts_urls]
-        arts_urls = filter(cover_filter, arts_urls)[:num]
+        arts_data = net.get_user(nick).get_top_albums_with_arts(period, size)
+        arts_urls = filter(cover_filter, (data.image for data in arts_data))
+
+        for art_url in arts_urls:
+            if len(images) == num: break
+            image = get_art_image(art_url)
+            if image: images.append(image)
+
     except pylast.WSError, e:
-        error = str(e)
+        logging.error('Failed to fetch images: %s (user - %s)' % (e, nick))
+        logging.exception(e)
+        error = 'Failed to fetch artworks images.'
 
-    return arts_urls, error
+    return images, error
 
 
-def generate_topart(nick, period, w, h):
-    size = config.ABOUT_ME_WIDTH // w
+def get_art_image(url):
+    try:
+        return Image.open(StringIO(urlfetch.Fetch(url).content))
+    except (IOError, DownloadError), e:
+        logging.error('Failed to fetch image: %s (url - "%s")' % (e, url))
+        logging.exception(e)
+
+
+def generate_topart(nick, period, width, height):
+    size = config.ABOUT_ME_WIDTH // width
     req_size = opt_size(size)
 
     error = ''
     topart = None
 
-    arts_urls, error = get_arts_urls(nick, period, w * h, req_size)
+    images, error = get_arts_images(nick, period, width * height, req_size)
 
-    if arts_urls and not error:
-        if len(arts_urls) < w * h:
-            if len(arts_urls) >= w:
-                h = len(arts_urls) // w
-                arts_urls = arts_urls[:w * h]
+    if images and not error:
+        if len(images) < width * height:
+            if len(images) >= width:
+                height = len(images) // width
+                images = images[:width * height]
             else:
-                h = 1
-                w = len(arts_urls)
+                height = 1
+                width = len(images)
 
-        canvas = Image.new('RGBA', (size * w, size * h))
+        canvas = Image.new('RGBA', (size * width, size * height))
 
-        index = 0
-
-        for i in xrange(h):
-            for j in xrange(w):
-                error = append_image(canvas, arts_urls[i * w + j], index, w, size)
-                if not error: index += 1
+        for index, image in enumerate(images):
+            append_image(canvas, image, index, width, size)
 
         output = StringIO()
         canvas.save(output, format="PNG")
@@ -441,25 +455,12 @@ def generate_topart(nick, period, w, h):
     return topart, error
 
 
-def append_image(canvas, url, index, width, size):
-    error = ''
-
+def append_image(canvas, image, index, width, size):
     left = (index % width) * size
     top = (index // width) * size
 
-    try:
-        img = Image.open(StringIO(urlfetch.Fetch(url).content))
-        img.thumbnail((size, 'auto'))
-        canvas.paste(img.crop((0, 0, size, size)), (left, top))
-    except DownloadError, e:
-        logging.error('DownloadError: %s (url - "%s")' % (e, url))
-        error = 'Failed to fetch image ' + url
-    except Exception, e:
-        logging.error('Exception: %s (url - "%s")' % (e, url))
-        logging.exception(e)
-        error = 'Failed to process image ' + url
-
-    return error
+    image.thumbnail((size, 'auto'))
+    canvas.paste(image.crop((0, 0, size, size)), (left, top))
 
 
 def opt_size(size):
