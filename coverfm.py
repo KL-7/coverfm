@@ -439,11 +439,12 @@ def generate_topart(nick, period, w, h):
         except DownloadError, e:
             logging.error('DownloadError: %s (url - "%s")' % (e, url))
             error = 'Failed to fetch image ' + url
-        except BadImageError, e:
-            logging.error('BadImageError: %s (url - "%s")' % (e, url))
+        except Exception, e:
+            logging.error('Exception: %s (url - "%s")' % (e, url))
+            logging.exception(e)
             error = 'Failed to process image ' + url
     else:
-        error = 'Topart generating failed'
+        error = 'Topart generation failed'
 
     return topart, error
 
