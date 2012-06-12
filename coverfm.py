@@ -410,6 +410,7 @@ def generate_topart(nick, period, w, h):
 
     error = ''
     topart = None
+
     arts_urls, error = get_arts_urls(nick, period, w * h, req_size)
 
     if arts_urls and not error:
@@ -421,32 +422,44 @@ def generate_topart(nick, period, w, h):
                 h = 1
                 w = len(arts_urls)
 
-        try:
-            canvas = Image.new('RGBA', (size * w, size * h))
+        canvas = Image.new('RGBA', (size * w, size * h))
 
-            for i in xrange(h):
-                for j in xrange(w):
-                    url = arts_urls[i * w + j]
+        index = 0
 
-                    img = Image.open(StringIO(urlfetch.Fetch(url).content))
-                    img.thumbnail((size, 'auto'))
-                    canvas.paste(img.crop((0, 0, size, size)), (size * j, size * i))
+        for i in xrange(h):
+            for j in xrange(w):
+                error = append_image(canvas, arts_urls[i * w + j], index, w, size)
+                if not error: index += 1
 
-            output = StringIO()
-            canvas.save(output, format="PNG")
-            topart = output.getvalue()
-            output.close()
-        except DownloadError, e:
-            logging.error('DownloadError: %s (url - "%s")' % (e, url))
-            error = 'Failed to fetch image ' + url
-        except Exception, e:
-            logging.error('Exception: %s (url - "%s")' % (e, url))
-            logging.exception(e)
-            error = 'Failed to process image ' + url
+        output = StringIO()
+        canvas.save(output, format="PNG")
+        topart = output.getvalue()
+        output.close()
     else:
         error = 'Topart generation failed'
 
     return topart, error
+
+
+def append_image(canvas, url, index, width, size):
+    error = ''
+
+    left = (index % width) * size
+    top = (index // width) * size
+
+    try:
+        img = Image.open(StringIO(urlfetch.Fetch(url).content))
+        img.thumbnail((size, 'auto'))
+        canvas.paste(img.crop((0, 0, size, size)), (left, top))
+    except DownloadError, e:
+        logging.error('DownloadError: %s (url - "%s")' % (e, url))
+        error = 'Failed to fetch image ' + url
+    except Exception, e:
+        logging.error('Exception: %s (url - "%s")' % (e, url))
+        logging.exception(e)
+        error = 'Failed to process image ' + url
+
+    return error
 
 
 def opt_size(size):
