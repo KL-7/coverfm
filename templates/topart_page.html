@@ -1,10 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
+    <b><a href="/toparts">&#8592; Back to TopArts list</a></b>
     <div id="generated">
-        <h2>TopArt code:</h2>
-        <code>[quote][align=center][size=10][b]{{ nick }}'s Top Albums[/b][/size][/align][/quote]
-        [url={{ host }}][img]{{ host }}{{ topart.url }}.png[/img][/url]</code>
-        <h2>TopArt Image:</h2>
+        <h3>
+            Manage:
+            <a href="/update/{{ topart.id }}">update</a>
+            |
+            <a href="/delete/{{ topart.id }}" onclick="return confirm('Are you sure you want to delete this topart?');">delete</a>
+        </h3>
+
         <img class="topart" src="{{ topart.url }}.png"/>
+
+        <h3>BBCode</h3>
+        <code>
+            [quote][align=center][size=10][b]{{ nick }}'s Top Albums[/b][/size][/align][/quote]
+            [url={{ host }}][img]{{ host }}{{ topart.url }}.png[/img][/url]
+        </code>
+
     </div>
 {% endblock %}
